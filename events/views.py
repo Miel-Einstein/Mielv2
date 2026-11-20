@@ -16,6 +16,7 @@ from events.models import EventType, Event, Reaction, TermsAcceptance
 from events.services import pdf, seating
 from events.services import plan_svg as plan_render
 from events.services.defaults import seed_event_defaults
+from events.themes import theme_of
 
 LANG_COOKIE = "miel_lang"
 
@@ -180,6 +181,7 @@ def guest_render(request, template, event, ctx=None):
                "start_ms": S.event_data(event)["start_ms"], "title": event.title_in(lang)}}
     context.update(ctx or {})
     context["site_bg_css"] = site_bg_css(event, template)
+    context["page_theme"] = theme_of(event.owner)
     resp = render(request, template, context)
     resp.set_cookie(LANG_COOKIE, lang, max_age=60 * 60 * 24 * 365, samesite="Lax")
     return resp

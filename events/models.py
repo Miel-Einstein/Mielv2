@@ -446,6 +446,13 @@ class GiftReservation(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
 
+class UserSettings(models.Model):
+    """Préférences de l'organisateur (palette de fond de Miel)."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="miel_settings")
+    theme = models.CharField(max_length=20, default="cacao")
+
+
 class TermsAcceptance(models.Model):
     """Acceptation des conditions d'utilisation à l'inscription."""
 

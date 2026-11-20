@@ -1,5 +1,5 @@
 {% load static miel %}<!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="{{ app_theme|default:'cacao' }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,13 +29,33 @@
     {% else %}
     <nav class="tabs"></nav>
     {% endif %}
-    {% if user.is_authenticated %}<form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}<button class="btn sm ghost" type="submit">Déconnexion</button></form>{% endif %}
+    {% if user.is_authenticated %}<button type="button" class="btn sm ghost" id="themeBtn" title="Couleur de fond" aria-label="Changer la couleur de fond">🎨</button><form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}<button class="btn sm ghost" type="submit">Déconnexion</button></form>{% endif %}
   </header>
   <main id="main">{% block main %}{% endblock %}</main>
 </div>
 <div class="toast" id="toast"></div>
 <script>window.MIEL_I18N={undo:"Annuler",getReady:"Préparez-vous…"};</script>
 <script src="{% static 'miel/js/miel.js' %}"></script>
+{% if user.is_authenticated %}<script>
+(function () {
+  const THEMES = {{ app_themes|to_json }};
+  const btn = document.getElementById('themeBtn'); if (!btn) return;
+  btn.onclick = () => {
+    const cur = document.documentElement.dataset.theme || 'cacao';
+    const card = ([k, n, light, c]) => '<button type="button" class="theme-sw' + (k === cur ? ' on' : '') + '" data-th="' + k + '"><span class="pv" style="background:' + c[0] + '"><i style="background:' + c[1] + '"></i><u></u></span><b>' + n + '</b></button>';
+    const sh = Miel.openSheet('<h3>Couleur de fond</h3><p class="muted" style="margin-top:0">Elle s\'applique à tes pages et à celles de tes invités (RSVP, carte, liste de cadeaux, mur, Y aller, écran géant). La connexion, l\'inscription et l\'assistant Miel gardent leurs couleurs.</p>' +
+      '<b style="font-size:13px">Sombres</b><div class="theme-grid" style="margin:6px 0 14px">' + THEMES.filter(t => !t[2]).map(card).join('') + '</div>' +
+      '<b style="font-size:13px">Claires</b><div class="theme-grid" style="margin-top:6px">' + THEMES.filter(t => t[2]).map(card).join('') + '</div>');
+    sh.querySelectorAll('[data-th]').forEach(b => b.onclick = async () => {
+      const prev = document.documentElement.dataset.theme;
+      document.documentElement.dataset.theme = b.dataset.th;
+      sh.querySelectorAll('[data-th]').forEach(x => x.classList.toggle('on', x === b));
+      try { await Miel.api('/api/me/theme/', { method: 'POST', json: { theme: b.dataset.th } }); Miel.toast('Couleur de fond enregistrée ✦'); }
+      catch (e) { document.documentElement.dataset.theme = prev; Miel.toast(e.message); }
+    });
+  };
+})();
+</script>{% endif %}
 {% if event and event_json %}
 <button type="button" class="bot-fab" id="botFab" aria-label="Ouvrir l'assistant"><span class="avatar" aria-hidden="true">🍯</span>Miel</button>
 <div class="bot-pop" id="botPop" hidden role="dialog" aria-modal="true" aria-labelledby="botTitle">

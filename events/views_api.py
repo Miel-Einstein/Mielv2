@@ -90,6 +90,20 @@ def identity(event, token):
     return None
 
 
+# ---------------------------------------------------------------- préférences
+@require_http_methods(["POST"])
+def my_theme(request):
+    from events.models import UserSettings
+    from events.themes import KEYS
+    if not request.user.is_authenticated:
+        return err("Connexion requise", 401)
+    theme = body(request).get("theme")
+    if theme not in KEYS:
+        return err("Palette inconnue")
+    UserSettings.objects.update_or_create(user=request.user, defaults={"theme": theme})
+    return ok({"theme": theme})
+
+
 # ---------------------------------------------------------------- événement
 EVENT_FIELDS = {"type", "title", "subtitle", "date", "time", "timezone", "languages", "services", "card_template",
                 "site_template", "kids_invited", "kids_table", "age_with_parents", "age_kids_max", "baby_chair",

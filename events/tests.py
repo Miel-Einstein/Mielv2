@@ -304,3 +304,16 @@ class PlanListTests(PlanAndBackgroundTests):
         r = self.client.get(f"/app/e/{self.ev.slug}/plan.pdf?layout=alpha")
         self.assertEqual(b"".join(r.streaming_content)[:4], b"%PDF")
         self.assertEqual(self.client.get(f"/api/e/{self.ev.slug}/plan-header/").json()["fr"]["title"], "PLAN DE TABLE")
+
+
+class ThemeTests(TestCase):
+    def test_palette_applies_to_app_and_guest_pages_not_login(self):
+        u = User.objects.create_user("t", "t@x.co", "pw-12345678")
+        ev = Event.objects.create(owner=u, type="anniversaire", title={"fr": "Fête"}, languages=["fr"], services=["carte"])
+        self.client.force_login(u)
+        self.assertEqual(self.client.post("/api/me/theme/", data='{"theme": "rouge-vif"}', content_type="application/json").status_code, 400)
+        self.assertEqual(self.client.post("/api/me/theme/", data='{"theme": "ivoire"}', content_type="application/json").status_code, 200)
+        self.assertContains(self.client.get(f"/app/e/{ev.slug}/"), 'data-theme="ivoire"')
+        self.client.logout()
+        self.assertContains(self.client.get(f"/e/{ev.slug}/rsvp/"), 'data-theme="ivoire"')  # invités : palette de l'organisateur
+        self.assertNotContains(self.client.get("/connexion/"), "data-theme")

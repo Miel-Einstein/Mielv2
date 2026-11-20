@@ -28,6 +28,7 @@ urlpatterns = [
     path("e/<slug:slug>/y-aller/", views.map_page, name="map"),
     path("e/<slug:slug>/cadeaux/", views.gift_list, name="gift_list"),
     # API organisateur
+    path("api/me/theme/", api.my_theme),
     path("api/e/<slug:slug>/", api.event_detail, name="api_event"),
     path("api/e/<slug:slug>/upload/", api.event_upload),
     path("api/e/<slug:slug>/categories/", api.categories),
