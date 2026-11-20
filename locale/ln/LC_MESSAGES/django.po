@@ -1,0 +1,26 @@
+#
+msgid ""
+msgstr ""
+"Language: ln\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Mur des vœux"
+msgstr "Lisango ya Mabondeli"
+
+msgid "Votre prénom et nom"
+msgstr "Nkombo na yo"
+
+msgid "Nom"
+msgstr "Nkombo"
+
+msgid "Laissez un vœu"
+msgstr "Tika lobondeli"
+
+msgid "Votre message…"
+msgstr "Maloba na yo ya bolingo..."
+
+msgid "Envoyer mon vœu"
+msgstr "Tinda lobondeli na ngai"

@@ -1,0 +1,69 @@
+{% extends "base_guest.html" %}{% load i18n miel %}
+{% block main %}
+<div class="wrap"><div class="guest-page">
+  <div class="gp-head">
+    <h1>{% translate "Répondre à l’invitation" %}</h1>
+    <div class="muted">{{ event.title|tr:lang }}{% if event.date %} · {{ event.date|date:"l j F Y" }}{% endif %}</div>
+  </div>
+  <form class="card grid" id="rsvpForm" novalidate>
+    <div class="row">
+      <label class="f" style="flex:1 1 180px">{% translate "Prénom" %}<input class="inp" id="r-first" autocomplete="given-name" required></label>
+      <label class="f" style="flex:1 1 180px">{% translate "Nom" %}<input class="inp" id="r-last" autocomplete="family-name"></label>
+    </div>
+    <div class="row">
+      <label class="f" style="flex:1 1 200px">{% translate "E-mail (facultatif)" %}<input class="inp" id="r-email" type="email" autocomplete="email"></label>
+      <label class="f" style="flex:1 1 160px">{% translate "Téléphone (facultatif)" %}<input class="inp" id="r-phone" type="tel" autocomplete="tel"></label>
+    </div>
+    <div><div class="f" style="margin-bottom:6px">{% translate "Serez-vous présent·e ?" %}</div>
+      <div class="chips"><button type="button" class="chip on" data-att="1">{% translate "Oui, avec joie" %}</button><button type="button" class="chip" data-att="0">{% translate "Désolé·e, je ne pourrai pas" %}</button></div></div>
+    <div id="attBlock" class="grid">
+      {% if categories %}<label class="f">{% translate "Vous êtes…" %}<select class="inp" id="r-cat">{% for c in categories %}<option value="{{ c.id }}">{{ c.name|tr:lang }}</option>{% endfor %}</select></label>{% endif %}
+      <div><div class="row" style="justify-content:space-between"><span class="f">{% translate "Accompagnant·e·s" %}</span><div class="row"><button type="button" class="icon-btn" data-comp="-1" aria-label="-">−</button><b id="compN" style="min-width:20px;text-align:center">0</b><button type="button" class="icon-btn" data-comp="1" aria-label="+">+</button></div></div><div id="comps"></div></div>
+      <div id="kidsBlock" hidden><div class="f" style="margin-bottom:6px">{% translate "Vos enfants" %}</div><div id="kids"></div><button type="button" class="btn sm" id="addKid">{% translate "+ Ajouter un enfant" %}</button></div>
+    </div>
+    <label class="f">{% translate "Un mot pour les hôtes (facultatif)" %}<textarea class="inp" id="r-msg" rows="3"></textarea></label>
+    {% if 'mur' in event.services %}<label class="f">{% translate "Vos vœux (facultatif)" %}<textarea class="inp" id="r-wish" rows="3"></textarea></label>{% endif %}
+    <button class="btn gold" type="submit" id="r-send">{% translate "Envoyer ma réponse" %}</button>
+    {% if 'cadeaux' in event.services %}<a class="btn ghost" href="{% url 'gift_list' event.slug %}?lang={{ lang }}">🎁 {% translate "Liste de cadeaux" %}</a>{% endif %}
+  </form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const {$,$$,esc,api,toast,openGlass,closeGlass}=Miel;
+  const C={{ rsvp_conf|to_json }}, SLUG=MIEL_PUBLIC.slug, LANG=MIEL_PUBLIC.lang;
+  const T={compName:"{% translate 'Prénom de l’accompagnant·e' %}",kidName:"{% translate 'Prénom' %}",kidAge:"{% translate 'Âge' %}",
+    withParents:"{% translate 'reste avec ses parents' %}",noChair:"{% translate '(sans chaise)' %}",kidsTable:"{% translate 'table des enfants' %}",adultSeat:"{% translate 'place adulte' %}",
+    langsT:"{% translate 'Encore un petit détail…' %}",langsB:"{% translate 'Nous voulons que chacun se sente à l’aise à table et puisse discuter avec ses voisins 💬' %}",
+    langsQ:"{% translate 'Dans quelles langues aimez-vous converser ?' %}",langsH:"{% translate 'Vous pouvez en choisir plusieurs, ou passer cette étape.' %}",
+    other:"{% translate 'Autre' %}",cont:"{% translate '💖 Continuer' %}",skip:"{% translate 'Passer' %}",first:"{% translate 'Le prénom est obligatoire' %}"};
+  const LN={fr:'🇫🇷 Français',en:'🇬🇧 English',it:'🇮🇹 Italiano',ln:'🇨🇩 Lingála'};
+  let att=true,comps=[],kids=[];
+  $('#kidsBlock').hidden=!C.kids_invited;
+  const hint=a=>{if(a===''||a==null)return '';a=+a;if(a<C.age_with_parents)return T.withParents+(C.baby_chair?'':' '+T.noChair);if(C.kids_table&&a<=C.age_kids_max)return T.kidsTable;return T.adultSeat};
+  function drawComps(){$('#compN').textContent=comps.length;$('#comps').innerHTML=comps.map((c,i)=>`<input class="inp" style="margin-top:6px" data-ci="${i}" value="${esc(c)}" placeholder="${esc(T.compName)} ${i+1}">`).join('');$$('[data-ci]').forEach(i=>i.oninput=()=>comps[+i.dataset.ci]=i.value)}
+  function drawKids(){$('#kids').innerHTML=kids.map((k,i)=>`<div class="kid-row" style="margin-bottom:4px"><input class="inp" data-kn="${i}" placeholder="${esc(T.kidName)}" value="${esc(k.name)}"><input class="inp" type="number" min="0" max="17" data-ka="${i}" placeholder="${esc(T.kidAge)}" value="${k.age}"><button type="button" class="icon-btn" data-kx="${i}" aria-label="✕">✕</button></div><div class="hint k" id="kh${i}">${k.age!==''?'→ '+esc(hint(k.age)):''}</div>`).join('');
+    $$('[data-kn]').forEach(i=>i.oninput=()=>kids[+i.dataset.kn].name=i.value);
+    $$('[data-ka]').forEach(i=>i.oninput=()=>{kids[+i.dataset.ka].age=i.value;$('#kh'+i.dataset.ka).textContent=i.value!==''?'→ '+hint(i.value):''});
+    $$('[data-kx]').forEach(b=>b.onclick=()=>{kids.splice(+b.dataset.kx,1);drawKids()})}
+  $$('[data-att]').forEach(b=>b.onclick=()=>{att=b.dataset.att==='1';$$('[data-att]').forEach(x=>x.classList.toggle('on',x===b));$('#attBlock').hidden=!att});
+  $$('[data-comp]').forEach(b=>b.onclick=()=>{const n=Math.max(0,Math.min(C.max_companions,comps.length+(+b.dataset.comp)));while(comps.length<n)comps.push('');comps.length=n;drawComps()});
+  $('#addKid').onclick=()=>{kids.push({name:'',age:''});drawKids()};
+  $('#rsvpForm').onsubmit=e=>{e.preventDefault();
+    if(!$('#r-first').value.trim())return toast(T.first);
+    const data={first_name:$('#r-first').value,last_name:$('#r-last').value,email:$('#r-email').value,phone:$('#r-phone').value,attending:att,
+      category:$('#r-cat')?$('#r-cat').value:null,companions:comps.map(c=>c.trim()).filter(Boolean),children:kids.filter(k=>k.name.trim()).map(k=>({name:k.name,age:+k.age||0})),
+      message:$('#r-msg').value,wish:$('#r-wish')?$('#r-wish').value:'',lang:LANG,languages:[]};
+    if(att&&C.ask_languages){const sel=new Set();const g=openGlass(`<h3>✨ ${esc(T.langsT)} ✨</h3><p>${esc(T.langsB)}<br><b>${esc(T.langsQ)}</b></p><div class="chips" style="justify-content:center;margin:12px 0">${C.conversation_languages.map(k=>`<button type="button" class="chip" data-ll="${k}">${LN[k]||esc(k)}</button>`).join('')}</div><input class="inp" id="llOther" placeholder="${esc(T.other)}…" style="margin-bottom:6px"><p style="font-size:12px;opacity:.8">${esc(T.langsH)}</p><div class="row" style="justify-content:center"><button type="button" class="btn gold" id="llOk">${esc(T.cont)}</button><button type="button" class="btn ghost" id="llSkip">${esc(T.skip)}</button></div>`);
+      $$('[data-ll]',g).forEach(c=>c.onclick=()=>{sel.has(c.dataset.ll)?sel.delete(c.dataset.ll):sel.add(c.dataset.ll);c.classList.toggle('on')});
+      $('#llOk',g).onclick=()=>{const o=$('#llOther',g).value.trim();if(o)sel.add(o);data.languages=[...sel];closeGlass();send(data)};
+      $('#llSkip',g).onclick=()=>{closeGlass();send(data)}}
+    else send(data)};
+  async function send(data){$('#r-send').disabled=true;
+    try{const r=await api('/api/p/'+SLUG+'/rsvp/',{method:'POST',json:data});try{localStorage.setItem('miel_g_'+SLUG,r.token)}catch(e){}
+      location.href=r.card_url+'&new=1'}
+    catch(e){toast(e.message);$('#r-send').disabled=false}}
+})();
+</script>
+{% endblock %}

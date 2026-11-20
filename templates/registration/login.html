@@ -1,0 +1,10 @@
+{% extends "base_app.html" %}
+{% block title %}Connexion · Miel{% endblock %}
+{% block main %}
+<div class="card auth-box">
+  <h1 style="font-size:34px;font-style:italic;color:var(--honey-soft)">Connexion</h1>
+  <p class="muted">Retrouvez vos événements et votre assistant.</p>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn gold" type="submit" style="width:100%">Se connecter</button></form>
+  <p class="muted" style="margin-top:14px">Pas encore de compte ? <a href="{% url 'signup' %}">Créer un compte</a></p>
+</div>
+{% endblock %}

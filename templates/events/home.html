@@ -1,0 +1,26 @@
+{% extends "base_app.html" %}{% load miel %}
+{% block title %}Mes événements · Miel{% endblock %}
+{% block main %}
+<div class="wrap">
+  <div class="row" style="justify-content:space-between;margin-bottom:16px">
+    <h1 style="font-size:40px;font-style:italic;color:var(--honey-soft)">Mes événements</h1>
+  </div>
+  <form class="card row" method="post" action="{% url 'event_create' %}" style="margin-bottom:18px">
+    {% csrf_token %}
+    <label class="f" style="flex:2 1 220px">Nom de l'événement<input class="inp" name="title" placeholder="ex. Awa & Daniel" required></label>
+    <label class="f" style="flex:1 1 180px">Type<select class="inp" name="type">{% for v, l in types %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></label>
+    <button class="btn gold" type="submit" style="align-self:flex-end">✨ Créer avec l'assistant</button>
+  </form>
+  <div class="home-list">
+    {% for e in events %}
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b style="font-family:var(--display);font-size:24px">{{ e.title|tr:'fr' }}</b><span class="pill">{{ e.get_type_display }}</span></div>
+      <div class="muted" style="font-size:13px;margin:6px 0 12px">{% if e.date %}{{ e.date|date:"l j F Y" }}{% else %}Date à définir{% endif %}</div>
+      <div class="row"><a class="btn gold sm" href="{% url 'panel' e.slug %}">Ouvrir</a><a class="btn sm" href="{% url 'bot' e.slug %}">🤖 Assistant</a></div>
+    </div>
+    {% empty %}
+    <p class="muted">Aucun événement pour l'instant. Créez le premier ci-dessus : l'assistant vous guidera.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

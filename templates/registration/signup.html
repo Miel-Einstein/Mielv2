@@ -1,0 +1,9 @@
+{% extends "base_app.html" %}
+{% block title %}Créer un compte · Miel{% endblock %}
+{% block main %}
+<div class="card auth-box">
+  <h1 style="font-size:34px;font-style:italic;color:var(--honey-soft)">Créer un compte</h1>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn gold" type="submit" style="width:100%">Créer mon compte</button></form>
+  <p class="muted" style="margin-top:14px">Déjà inscrit ? <a href="{% url 'login' %}">Se connecter</a></p>
+</div>
+{% endblock %}

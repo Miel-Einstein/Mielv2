@@ -1,0 +1,21 @@
+{% extends "base_guest.html" %}{% load i18n miel %}
+{% block main %}
+<div class="card-page">
+  <div class="gp-head"><h1>{% translate "Merci" %} {{ guest.first_name }} !</h1><p>{% if guest.attending %}{% translate "Votre carte personnalisée est prête 🎉" %}{% else %}{% translate "Votre réponse a bien été enregistrée. Vous nous manquerez !" %}{% endif %}</p></div>
+  {% include "events/partials/card.html" %}
+  <div class="row" style="justify-content:center;margin-top:18px">
+    <a class="btn gold" id="dl" href="{% url 'card_pdf' event.slug guest.token %}?lang={{ lang }}" download>⤓ {% translate "Télécharger ma carte" %}</a>
+    {% if 'mur' in event.services %}<a class="btn" href="{% url 'wall' event.slug %}?g={{ guest.token }}&lang={{ lang }}">💬 {% translate "Mur des vœux" %}</a>{% endif %}
+    <a class="btn" href="{% url 'map' event.slug %}?g={{ guest.token }}&lang={{ lang }}">🧭 {% translate "Y aller" %}</a>
+    {% if 'cadeaux' in event.services %}<a class="btn ghost" href="{% url 'gift_list' event.slug %}?g={{ guest.token }}&lang={{ lang }}">🎁 {% translate "Liste de cadeaux" %}</a>{% endif %}
+  </div>
+  {% if song %}<div class="card" style="margin-top:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="vinyl"></div><div style="flex:1;min-width:140px"><b>♪ {{ song.title }}</b><div class="muted" style="font-size:12px">{{ song.artist }}</div></div>{% if song.youtube %}<a class="stream yt" href="{{ song.youtube }}" target="_blank" rel="noopener">▶ YouTube</a>{% endif %}{% if song.spotify %}<a class="stream sp" href="{{ song.spotify }}" target="_blank" rel="noopener">Spotify</a>{% endif %}</div>{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+try{localStorage.setItem('miel_g_'+MIEL_PUBLIC.slug,"{{ guest.token }}")}catch(e){}
+Miel.renderQRs();
+if(new URLSearchParams(location.search).get('new')==='1'){Miel.confetti(60);setTimeout(()=>document.getElementById('dl').click(),900)}
+</script>
+{% endblock %}

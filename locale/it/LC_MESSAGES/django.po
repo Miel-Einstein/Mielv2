@@ -1,0 +1,349 @@
+#
+msgid ""
+msgstr ""
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Langue"
+msgstr "Lingua"
+
+msgid "Annuler"
+msgstr "Annulla"
+
+msgid "Préparez-vous…"
+msgstr "Preparatevi…"
+
+msgid "Bonjour"
+msgstr "Ciao"
+
+msgid "Dites-nous d’abord qui vous êtes 😊"
+msgstr "Dicci prima chi sei 😊"
+
+msgid "Vœu supprimé"
+msgstr "Desiderio eliminato"
+
+msgid "Envoyé ✦"
+msgstr "Inviato ✦"
+
+msgid "Merci"
+msgstr "Grazie"
+
+msgid "Votre carte personnalisée est prête 🎉"
+msgstr "Il tuo invito personalizzato è pronto 🎉"
+
+msgid "Votre réponse a bien été enregistrée. Vous nous manquerez !"
+msgstr "La tua risposta è stata registrata. Ci mancherai!"
+
+msgid "Télécharger ma carte"
+msgstr "Scarica il mio invito"
+
+msgid "Mur des vœux"
+msgstr "Muro dei desideri"
+
+msgid "Y aller"
+msgstr "Come arrivare"
+
+msgid "Liste de cadeaux"
+msgstr "Lista regali"
+
+msgid "Je l’offre"
+msgstr "Lo regalo io"
+
+msgid "Déjà offert"
+msgstr "Già regalato"
+
+msgid "Votre prénom et nom"
+msgstr "Nome e cognome"
+
+msgid "Quantité"
+msgstr "Quantità"
+
+msgid "Livraison"
+msgstr "Consegna"
+
+msgid "Merci ! Le cadeau est réservé 💛"
+msgstr "Grazie! Il regalo è prenotato 💛"
+
+msgid "Confirmer"
+msgstr "Conferma"
+
+msgid "restant(s)"
+msgstr "rimasti"
+
+msgid "Carte"
+msgstr "Mappa"
+
+msgid "Distance"
+msgstr "Distanza"
+
+msgid "Direction"
+msgstr "Direzione"
+
+msgid "Arrivée estimée"
+msgstr "Arrivo stimato"
+
+msgid "Mode économie"
+msgstr "Risparmio batteria"
+
+msgid "Votre position reste sur votre téléphone : elle n’est jamais envoyée."
+msgstr "La tua posizione resta sul telefono: non viene mai inviata."
+
+msgid "La distance est calculée en ligne droite."
+msgstr "La distanza è calcolata in linea d'aria."
+
+msgid "Parcours de la journée"
+msgstr "Percorso della giornata"
+
+msgid "Me guider avec mon appli"
+msgstr "Guidami con la mia app"
+
+msgid "nord"
+msgstr "nord"
+
+msgid "nord-est"
+msgstr "nord-est"
+
+msgid "est"
+msgstr "est"
+
+msgid "sud-est"
+msgstr "sud-est"
+
+msgid "sud"
+msgstr "sud"
+
+msgid "sud-ouest"
+msgstr "sud-ovest"
+
+msgid "ouest"
+msgstr "ovest"
+
+msgid "nord-ouest"
+msgstr "nord-ovest"
+
+msgid ""
+"%(place)s commence dans %(min)s min, il vous reste environ %(eta)s min de "
+"trajet."
+msgstr ""
+"%(place)s inizia tra %(min)s min, ti restano circa %(eta)s min di strada."
+
+msgid "Bienvenue"
+msgstr "Benvenuto/a"
+
+msgid "Vous êtes arrivé·e à"
+msgstr "Sei arrivato/a a"
+
+msgid "✅ Je suis arrivé·e"
+msgstr "✅ Sono arrivato/a"
+
+msgid "💬 Laisser un vœu"
+msgstr "💬 Lascia un desiderio"
+
+msgid "Fermer"
+msgstr "Chiudi"
+
+msgid "Votre place vous attend 💛"
+msgstr "Il tuo posto ti aspetta 💛"
+
+msgid "Merci ! Les hôtes savent que vous êtes là."
+msgstr "Grazie! Gli ospiti sanno che sei qui."
+
+msgid "Activez la localisation pour vous voir sur la carte."
+msgstr "Attiva la localizzazione per vederti sulla mappa."
+
+msgid "Position mise à jour moins souvent pour économiser la batterie"
+msgstr "Posizione aggiornata meno spesso per risparmiare batteria"
+
+msgid "Cher·e"
+msgstr "Caro/a"
+
+msgid "Scannez pour le mur des vœux et vos photos"
+msgstr "Scansiona per il muro dei desideri e le foto"
+
+msgid "Plus que…"
+msgstr "Mancano…"
+
+msgid "Jours"
+msgstr "Giorni"
+
+msgid "Heures"
+msgstr "Ore"
+
+msgid "Min"
+msgstr "Min"
+
+msgid "Sec"
+msgstr "Sec"
+
+msgid "Notre histoire"
+msgstr "La nostra storia"
+
+msgid "Notre histoire d’amour"
+msgstr "La nostra storia d'amore"
+
+msgid "Programme"
+msgstr "Programma"
+
+msgid "Le programme de la journée"
+msgstr "Il programma della giornata"
+
+msgid "Musique"
+msgstr "Musica"
+
+msgid "La chanson de la fête"
+msgstr "La canzone della festa"
+
+msgid "Streamer sur"
+msgstr "Ascolta su"
+
+msgid "Serez-vous des nôtres ?"
+msgstr "Sarai dei nostri?"
+
+msgid "Répondre à l’invitation"
+msgstr "Rispondi all'invito"
+
+msgid "Prénom"
+msgstr "Nome"
+
+msgid "Nom"
+msgstr "Cognome"
+
+msgid "E-mail (facultatif)"
+msgstr "E-mail (facoltativa)"
+
+msgid "Téléphone (facultatif)"
+msgstr "Telefono (facoltativo)"
+
+msgid "Serez-vous présent·e ?"
+msgstr "Sarai presente?"
+
+msgid "Oui, avec joie"
+msgstr "Sì, con gioia"
+
+msgid "Désolé·e, je ne pourrai pas"
+msgstr "Purtroppo non potrò"
+
+msgid "Vous êtes…"
+msgstr "Sei…"
+
+msgid "Accompagnant·e·s"
+msgstr "Accompagnatori"
+
+msgid "Vos enfants"
+msgstr "I tuoi figli"
+
+msgid "+ Ajouter un enfant"
+msgstr "+ Aggiungi un bambino"
+
+msgid "Un mot pour les hôtes (facultatif)"
+msgstr "Un pensiero per gli sposi (facoltativo)"
+
+msgid "Vos vœux (facultatif)"
+msgstr "I tuoi auguri (facoltativi)"
+
+msgid "Envoyer ma réponse"
+msgstr "Invia la risposta"
+
+msgid "Prénom de l’accompagnant·e"
+msgstr "Nome dell'accompagnatore"
+
+msgid "Âge"
+msgstr "Età"
+
+msgid "reste avec ses parents"
+msgstr "resta con i genitori"
+
+msgid "(sans chaise)"
+msgstr "(senza sedia)"
+
+msgid "table des enfants"
+msgstr "tavolo dei bambini"
+
+msgid "place adulte"
+msgstr "posto adulto"
+
+msgid "Encore un petit détail…"
+msgstr "Ancora un piccolo dettaglio…"
+
+msgid ""
+"Nous voulons que chacun se sente à l’aise à table et puisse discuter avec "
+"ses voisins 💬"
+msgstr ""
+"Vogliamo che tutti si sentano a proprio agio a tavola e possano "
+"chiacchierare con i vicini 💬"
+
+msgid "Dans quelles langues aimez-vous converser ?"
+msgstr "In quali lingue ti piace conversare?"
+
+msgid "Vous pouvez en choisir plusieurs, ou passer cette étape."
+msgstr "Puoi sceglierne più di una, oppure saltare."
+
+msgid "Autre"
+msgstr "Altra"
+
+msgid "💖 Continuer"
+msgstr "💖 Continua"
+
+msgid "Passer"
+msgstr "Salta"
+
+msgid "Le prénom est obligatoire"
+msgstr "Il nome è obbligatorio"
+
+msgid "Plein écran"
+msgstr "Schermo intero"
+
+msgid "vœux"
+msgstr "desideri"
+
+msgid "réactions"
+msgstr "reazioni"
+
+msgid "Bientôt"
+msgstr "A breve"
+
+msgid "Scannez pour laisser votre vœu 💛"
+msgstr "Scansiona per lasciare il tuo desiderio 💛"
+
+msgid "Histoire"
+msgstr "Storia"
+
+msgid "Messages d’amour de nos invités"
+msgstr "Messaggi d'amore dai nostri ospiti"
+
+msgid "Écouter"
+msgstr "Ascolta"
+
+msgid "Moments forts"
+msgstr "Momenti speciali"
+
+msgid "Laissez un vœu"
+msgstr "Lascia un desiderio"
+
+msgid "Votre message…"
+msgstr "Il tuo messaggio…"
+
+msgid "Envoyer mon vœu"
+msgstr "Invia il mio desiderio"
+
+msgid ""
+"Vous n’avez pas votre carte ? Dites-nous qui vous êtes, une seule fois."
+msgstr "Non hai il tuo invito? Dicci chi sei, una volta sola."
+
+msgid "Reconnu·e grâce au QR code de votre carte."
+msgstr "Riconosciuto/a grazie al QR code del tuo invito."
+
+msgid "Supprimer mon vœu"
+msgstr "Elimina il mio desiderio"
+
+msgid "Envoyer une photo ou une vidéo"
+msgstr "Invia una foto o un video"
+
+msgid "Photo envoyée aux mariés 📸"
+msgstr "Foto inviata agli sposi 📸"
+
+msgid "Légende (facultatif)"
+msgstr "Didascalia (facoltativa)"

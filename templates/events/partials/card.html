@@ -1,0 +1,13 @@
+{% load i18n miel %}<div class="icard {{ event.card_template }}">
+  <div class="ph"{% if event.cover_image %} style="background:url('{{ event.cover_image.url }}') center/cover"{% endif %}>
+    {% if not event.cover_image %}<div class="mono">{{ monogram }}</div>{% endif %}
+    {% if event.subtitle|tr:lang %}<div class="badge">♥ {{ event.subtitle|tr:lang }}</div>{% endif %}
+  </div>
+  <div class="bd">
+    <div class="names">{{ event.title|tr:lang }}</div>
+    {% if guest %}<div class="dear">{% translate "Cher·e" %} {{ guest.full_name }}</div>{% endif %}
+    {% if event.date %}<div style="font-size:13px">{{ event.date|date:"l j F Y" }}</div>{% endif %}
+    {% if venues %}<div class="evs">{% for v in venues %}<div><b>{{ v.start|time:"H:i" }}</b> · {{ v.name|tr:lang }}{% if v.address %} — {{ v.address }}{% endif %}</div>{% endfor %}</div>{% endif %}
+    {% if guest %}<div class="qrrow"><div class="qr" data-qr="{{ wall_url }}"></div><div>{% translate "Scannez pour le mur des vœux et vos photos" %}{% if song %}<br><b>♪ {{ song.title }}</b>{% endif %}</div></div>{% endif %}
+  </div>
+</div>

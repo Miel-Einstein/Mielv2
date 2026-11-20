@@ -1,0 +1,21 @@
+{% extends "base_guest.html" %}{% load i18n miel %}
+{% block main %}
+<div class="wrap"><div class="guest-page" style="max-width:900px">
+  <div class="gp-head"><h1>🎁 {% translate "Liste de cadeaux" %}</h1><div class="muted">{{ event.title|tr:lang }}</div></div>
+  <div class="gm-grid" id="gifts" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px"></div>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const {$,$$,esc,api,toast,openSheet,closeSheet}=Miel;const SLUG=MIEL_PUBLIC.slug,CUR="{{ event.currency|escapejs }}";
+  const T={reserve:"{% translate 'Je l’offre' %}",reserved:"{% translate 'Déjà offert' %}",name:"{% translate 'Votre prénom et nom' %}",qty:"{% translate 'Quantité' %}",delivery:"{% translate 'Livraison' %}",ok:"{% translate 'Merci ! Le cadeau est réservé 💛' %}",confirm:"{% translate 'Confirmer' %}",left:"{% translate 'restant(s)' %}"};
+  let token=new URLSearchParams(location.search).get('g');try{token=token||localStorage.getItem('miel_g_'+SLUG)}catch(e){}
+  let D;async function load(){D=await api('/api/p/'+SLUG+'/gifts/');draw()}
+  function draw(){$('#gifts').innerHTML=D.gifts.map(g=>{const left=g.quantity-g.quantity_reserved;return `<div class="card grid" style="gap:8px"><b style="font-family:var(--display);font-size:22px;color:var(--honey-soft)">${esc(g.name)}</b>${g.price!=null?`<span>${g.price} ${esc(CUR)}</span>`:''}${g.description?`<p class="muted" style="margin:0">${esc(g.description)}</p>`:''}${g.link?`<a href="${esc(g.link)}" target="_blank" rel="noopener">🔗</a>`:''}<span class="pill ${left?'':'ok'}">${left?left+' '+esc(T.left):esc(T.reserved)}</span>${left?`<button class="btn gold sm" data-g="${g.id}" type="button">${esc(T.reserve)}</button>`:''}</div>`}).join('');
+    $$('[data-g]').forEach(b=>b.onclick=()=>{const g=D.gifts.find(x=>x.id==b.dataset.g),left=g.quantity-g.quantity_reserved;const sh=openSheet(`<h3>${esc(g.name)}</h3><div class="grid">${token?'':`<label class="f">${esc(T.name)}<input class="inp" id="gr-n"></label>`}<label class="f">${esc(T.qty)}<input class="inp" type="number" id="gr-q" min="1" max="${left}" value="1"></label>${D.delivery_options.length?`<label class="f">${esc(T.delivery)}<select class="inp" id="gr-d">${D.delivery_options.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}</select></label>`:''}<button class="btn gold" type="button" id="gr-ok">${esc(T.confirm)}</button></div>`);
+      $('#gr-ok',sh).onclick=async()=>{try{await api('/api/p/'+SLUG+'/gifts/'+g.id+'/reserve/',{method:'POST',json:{token,full_name:$('#gr-n',sh)?$('#gr-n',sh).value:'',quantity:+$('#gr-q',sh).value||1,delivery_option:$('#gr-d',sh)?$('#gr-d',sh).value:null}});closeSheet();toast(T.ok);Miel.confetti(40);load()}catch(e){toast(e.message)}}})}
+  load();
+})();
+</script>
+{% endblock %}

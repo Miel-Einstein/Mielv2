@@ -1,0 +1,62 @@
+{% extends "base_app.html" %}{% load miel %}
+{% block title %}Cadeaux · {{ event }}{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* Gestionnaire de cadeaux (repris du modèle existant, aux couleurs de Miel) */
+.gm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px}
+.gm-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.gm-card .hd{padding:14px 16px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.gm-card .hd h3{font-size:24px;color:var(--honey-soft)}
+.gm-card .bd{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.gm-res{width:100%;border-collapse:collapse;font-size:13.5px}
+.gm-res th,.gm-res td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+@media (max-width:640px){.gm-res thead{display:none}.gm-res tr{display:block;padding:8px 0;border-bottom:1px solid var(--line)}.gm-res td{display:block;border:none;padding:2px 0}}
+</style>
+{% endblock %}
+{% block main %}
+<div class="wrap">
+  <div class="row" style="justify-content:space-between;margin-bottom:12px"><h1 style="font-size:36px;font-style:italic;color:var(--honey-soft)">🎁 Liste de cadeaux</h1>
+    <div class="row"><button class="btn sm" id="dlvBtn">🚚 Options de livraison</button><button class="btn sm" id="resBtn">📋 Réservations</button><a class="btn sm ghost" href="{% url 'gift_list' event.slug %}" target="_blank" rel="noopener">Voir la page invités ↗</a></div></div>
+  <form class="card grid" id="giftForm">
+    <b id="formTitle">➕ Ajouter un cadeau</b>
+    <div class="row"><label class="f" style="flex:2 1 200px">Nom du cadeau<input class="inp" id="g-name" required></label><label class="f" style="flex:1 1 120px">Prix ({{ event.currency }})<input class="inp" id="g-price" type="number" step="0.01"></label><label class="f" style="flex:1 1 100px">Quantité<input class="inp" id="g-qty" type="number" min="1" value="1"></label></div>
+    <label class="f">Description<textarea class="inp" id="g-desc" rows="2"></textarea></label>
+    <label class="f">Lien<input class="inp" id="g-link" type="url" placeholder="https://…"></label>
+    <div class="row"><button class="btn gold" type="submit" id="g-save">💾 Enregistrer</button><button class="btn ghost" type="button" id="g-cancel" hidden>Annuler</button></div>
+  </form>
+  <div class="row" style="margin-top:16px"><div class="chips"><button class="chip on" data-f="all">Tous</button><button class="chip" data-f="available">Disponibles</button><button class="chip" data-f="reserved">Réservés</button></div><input class="inp" id="g-q" placeholder="🔍 Rechercher…" style="max-width:280px;margin-left:auto"></div>
+  <div class="gm-grid" id="gifts"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const {$,$$,esc,api,toast,openSheet,closeSheet}=Miel;
+  const BASE='/api/e/{{ event.slug }}/', CUR='{{ event.currency|escapejs }}';
+  let gifts=[],filter='all',editId=null;
+  async function load(){gifts=await api(BASE+'gifts/');draw()}
+  function draw(){
+    const q=$('#g-q').value.toLowerCase();
+    let list=gifts.filter(g=>filter==='all'||(filter==='available'?g.quantity_reserved<g.quantity:g.quantity_reserved>0)).filter(g=>!q||g.name.toLowerCase().includes(q));
+    $('#gifts').innerHTML=list.map(g=>{const pct=Math.round(g.quantity_reserved/g.quantity*100);return `<div class="gm-card"><div class="hd"><span class="pill ${g.quantity_reserved>=g.quantity?'ok':''}">${g.quantity_reserved>=g.quantity?'✅ Réservé':'📦 Disponible'}</span><h3>${esc(g.name)}</h3>${g.price!=null?`<b>${g.price} ${esc(CUR)}</b>`:''}</div><div class="bd">${g.description?`<p class="muted" style="margin:0">${esc(g.description)}</p>`:''}${g.link?`<a href="${esc(g.link)}" target="_blank" rel="noopener">🔗 Voir le produit</a>`:''}<div class="bar"><i style="width:${pct}%"></i></div><div class="muted" style="font-size:13px">Réservé : ${g.quantity_reserved}/${g.quantity}</div><div class="row"><button class="btn sm" data-e="${g.id}">✏️ Modifier</button><button class="btn sm danger" data-d="${g.id}">🗑️ Supprimer</button></div></div></div>`}).join('')||'<p class="muted">Aucun cadeau.</p>';
+    $$('[data-e]').forEach(b=>b.onclick=()=>{const g=gifts.find(x=>x.id==b.dataset.e);editId=g.id;$('#g-name').value=g.name;$('#g-price').value=g.price??'';$('#g-qty').value=g.quantity;$('#g-desc').value=g.description;$('#g-link').value=g.link;$('#formTitle').textContent='✏️ Modifier le cadeau';$('#g-cancel').hidden=false;scrollTo({top:0,behavior:'smooth'})});
+    $$('[data-d]').forEach(b=>b.onclick=async()=>{await api(BASE+'gifts/'+b.dataset.d+'/',{method:'DELETE'});toast('Cadeau supprimé');load()});
+  }
+  const reset=()=>{editId=null;$('#giftForm').reset();$('#formTitle').textContent='➕ Ajouter un cadeau';$('#g-cancel').hidden=true};
+  $('#g-cancel').onclick=reset;
+  $('#giftForm').onsubmit=async e=>{e.preventDefault();const d={name:$('#g-name').value,price:$('#g-price').value,quantity:+$('#g-qty').value||1,description:$('#g-desc').value,link:$('#g-link').value};
+    try{await api(BASE+'gifts/'+(editId?editId+'/':''),{method:editId?'PUT':'POST',json:d});toast(editId?'Cadeau modifié ✦':'Cadeau ajouté ✦');reset();load()}catch(err){toast(err.message)}};
+  $$('[data-f]').forEach(c=>c.onclick=()=>{filter=c.dataset.f;$$('[data-f]').forEach(x=>x.classList.toggle('on',x===c));draw()});
+  $('#g-q').oninput=draw;
+  $('#dlvBtn').onclick=async()=>{const opts=await api(BASE+'delivery-options/');const sh=openSheet(`<h3>🚚 Options de livraison</h3><div class="grid" id="dl">${opts.map(o=>`<div class="row"><input class="inp" style="flex:1" value="${esc(o.name)}" data-o="${o.id}"><button class="icon-btn" data-x="${o.id}">✕</button></div>`).join('')||'<p class="muted">Aucune option.</p>'}</div><div class="row" style="margin-top:10px"><input class="inp" style="flex:1" id="dlNew" placeholder="ex. Livraison à domicile"><button class="btn gold sm" id="dlAdd">Ajouter</button></div>`);
+    $$('[data-o]',sh).forEach(i=>i.onchange=()=>api(BASE+'delivery-options/'+i.dataset.o+'/',{method:'PUT',json:{name:i.value}}).then(()=>toast('Option modifiée')));
+    $$('[data-x]',sh).forEach(b=>b.onclick=async()=>{await api(BASE+'delivery-options/'+b.dataset.x+'/',{method:'DELETE'});$('#dlvBtn').click()});
+    $('#dlAdd',sh).onclick=async()=>{const v=$('#dlNew',sh).value.trim();if(!v)return;await api(BASE+'delivery-options/',{method:'POST',json:{name:v}});$('#dlvBtn').click()}};
+  $('#resBtn').onclick=async()=>{const rs=await api(BASE+'reservations/');const sh=openSheet(`<h3>📋 Réservations</h3>${rs.length?`<button class="btn sm gold" id="pdfBtn" style="margin-bottom:10px">⤓ PDF</button><table class="gm-res"><thead><tr><th>Nom</th><th>Cadeau</th><th>Qté</th><th>Livraison</th></tr></thead><tbody>${rs.map(r=>`<tr><td>${esc(r.full_name)}</td><td>${esc(r.cadeau_reserve)}</td><td>${r.quantite_reservee}</td><td>${esc(r.delivery_option_name||'—')}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Pas encore de réservation.</p>'}`);
+    const pb=$('#pdfBtn',sh);if(pb)pb.onclick=()=>{const {jsPDF}=window.jspdf;const doc=new jsPDF('landscape');doc.setFontSize(18);doc.text('Réservations de cadeaux',14,20);doc.autoTable({startY:30,head:[['#','Nom','Cadeau','Quantité','Livraison']],body:rs.map((r,i)=>[i+1,r.full_name,r.cadeau_reserve,r.quantite_reservee,r.delivery_option_name||'—']),headStyles:{fillColor:[139,90,43]}});doc.save('reservations.pdf')}};
+  load();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base_guest.html" %}{% load i18n miel %}
+{% block main %}
+<div class="wrap"><div class="wall">
+  <h1>{% translate "Mur des vœux" %}</h1>
+  <div class="sub">{% translate "Messages d’amour de nos invités" %} · {{ event.title|tr:lang }}</div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))">
+    {% if song %}<div class="card music-box"><div class="vinyl" aria-hidden="true"></div><div style="flex:1;min-width:130px"><div class="muted" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em">{% translate "La chanson de la fête" %}</div><b>{{ song.title }}</b><div class="muted" style="font-size:12px">{{ song.artist }}</div>{% if song.audio %}<audio id="bgm" src="{{ song.audio }}" loop preload="none"></audio><button class="btn sm" type="button" id="bgmBtn" style="margin-top:6px">▶ {% translate "Écouter" %}</button>{% endif %}</div><div class="row">{% if song.youtube %}<a class="stream yt" href="{{ song.youtube }}" target="_blank" rel="noopener">▶ {% translate "Streamer sur" %} YouTube</a>{% endif %}{% if song.spotify %}<a class="stream sp" href="{{ song.spotify }}" target="_blank" rel="noopener">{% translate "Streamer sur" %} Spotify</a>{% endif %}</div></div>{% endif %}
+    <div class="card" id="whoBox"></div>
+  </div>
+  {% if done_moments %}<h3 style="color:#b45f2b;font-style:italic;font-size:24px;margin:16px 0 8px">{% translate "Moments forts" %}</h3>
+  <div class="frise">{% for m in done_moments %}<div class="mo">{% if m.photo and not m.launched_as_message %}<div class="im" style="background-image:url('{{ m.photo.url }}')"></div>{% else %}<div class="im" style="background:linear-gradient(135deg,#3a2617,#6b3f1f)"></div>{% endif %}<b>{{ m.title|tr:lang }}</b></div>{% endfor %}</div>{% endif %}
+  <div id="writeBox"></div>
+  <div class="wishes" id="wishes" aria-live="polite"></div>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const {$,$$,esc,api,toast}=Miel;
+  const SLUG=MIEL_PUBLIC.slug,EMO={{ emojis|to_json }};
+  const T={leave:"{% translate 'Laissez un vœu' %}",yourName:"{% translate 'Votre prénom et nom' %}",yourMsg:"{% translate 'Votre message…' %}",sendWish:"{% translate 'Envoyer mon vœu' %}",
+    noCard:"{% translate 'Vous n’avez pas votre carte ? Dites-nous qui vous êtes, une seule fois.' %}",known:"{% translate 'Reconnu·e grâce au QR code de votre carte.' %}",
+    del:"{% translate 'Supprimer mon vœu' %}",photo:"{% translate 'Envoyer une photo ou une vidéo' %}",photoOk:"{% translate 'Photo envoyée aux mariés 📸' %}",caption:"{% translate 'Légende (facultatif)' %}",
+    hello:"{% translate 'Bonjour' %}"};
+  const qs=new URLSearchParams(location.search);
+  let token=qs.get('g');try{if(token)localStorage.setItem('miel_g_'+SLUG,token);else token=localStorage.getItem('miel_g_'+SLUG)}catch(e){}
+  let me=null,wishes=[];
+  async function who(){
+    if(token){const r=await api('/api/p/'+SLUG+'/me/?g='+encodeURIComponent(token));if(r.known)me={token,...r}}
+    if(me){$('#whoBox').innerHTML=`<div style="font-size:15px">👋 ${esc(T.hello)} <b>${esc(me.first)}</b> !</div><div class="muted" style="font-size:12.5px">${esc(T.known)}</div>`;
+      $('#writeBox').innerHTML=`<form class="card grid" id="wishForm" style="margin:16px 0"><b style="color:#b45f2b">✍️ ${esc(T.leave)}</b><textarea class="inp" id="wishTx" rows="2" maxlength="600" placeholder="${esc(T.yourMsg)}" required></textarea><div class="row"><button class="btn gold" type="submit">${esc(T.sendWish)}</button><label class="btn">📸 ${esc(T.photo)}<input type="file" accept="image/*,video/*" hidden id="media"></label></div></form>`;
+      $('#wishForm').onsubmit=async e=>{e.preventDefault();const tx=$('#wishTx').value.trim();if(!tx)return;try{await api('/api/p/'+SLUG+'/wishes/',{method:'POST',json:{token,text:tx}});$('#wishTx').value='';Miel.floatEmoji('💛');load()}catch(err){toast(err.message)}};
+      $('#media').onchange=async e=>{const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('token',token);fd.append('file',f);fd.append('caption',$('#wishTx').value);try{await api('/api/p/'+SLUG+'/media/',{method:'POST',form:fd});toast(T.photoOk)}catch(err){toast(err.message)}};}
+    else{$('#whoBox').innerHTML=`<div class="muted" style="font-size:13px;margin-bottom:6px">${esc(T.noCard)}</div><div class="row"><input class="inp" style="flex:1" id="visName" placeholder="${esc(T.yourName)}"><button class="btn gold sm" id="visOk">OK</button></div>`;
+      $('#visOk').onclick=async()=>{try{const r=await api('/api/p/'+SLUG+'/visitor/',{method:'POST',json:{name:$('#visName').value}});token=r.token;try{localStorage.setItem('miel_g_'+SLUG,token)}catch(e){}who().then(load)}catch(err){toast(err.message)}}}
+  }
+  async function load(){wishes=await api('/api/p/'+SLUG+'/wishes/'+(token?'?g='+encodeURIComponent(token):''));draw()}
+  function draw(){$('#wishes').innerHTML=wishes.map(w=>`<div class="wish"><div class="who">${esc(w.author)}</div><div class="tx">“${esc(w.text)}”</div><div class="reacts">${EMO.map(e=>`<button type="button" data-w="${w.id}" data-e="${e}" class="${w.mine.includes(e)?'on':''}" aria-label="${e}">${e} ${w.reactions[e]||''}</button>`).join('')}</div>${w.own?`<button class="btn sm" type="button" data-del="${w.id}" style="align-self:flex-start">${esc(T.del)}</button>`:''}</div>`).join('');
+    $$('[data-e]').forEach(b=>b.onclick=async()=>{if(!me)return toast(Miel.t('whoFirst'));try{const w=await api('/api/p/'+SLUG+'/wishes/'+b.dataset.w+'/react/',{method:'POST',json:{token,emoji:b.dataset.e}});const i=wishes.findIndex(x=>x.id===w.id);wishes[i]=w;if(w.mine.includes(b.dataset.e))Miel.floatEmoji(b.dataset.e);draw()}catch(err){toast(err.message)}});
+    $$('[data-del]').forEach(b=>b.onclick=async()=>{await api('/api/p/'+SLUG+'/wishes/'+b.dataset.del+'/?g='+encodeURIComponent(token),{method:'DELETE'});toast(Miel.t('wishDeleted'));load()})}
+  Miel.on('wish',load);Miel.on('wish_deleted',load);Miel.on('wishes_changed',load);
+  Miel.on('reaction',p=>{const w=wishes.find(x=>x.id===p.id);if(w){w.reactions=p.reactions;draw()}if(p.emoji)Miel.floatEmoji(p.emoji)});
+  const bb=$('#bgmBtn');if(bb)bb.onclick=()=>{const a=$('#bgm');if(a.paused){a.play().then(()=>bb.textContent='⏸').catch(()=>{})}else{a.pause();bb.textContent='▶'}};
+  who().then(load).catch(e=>toast(e.message));
+})();
+</script>
+{% endblock %}

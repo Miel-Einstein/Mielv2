@@ -1,0 +1,33 @@
+{% load i18n miel %}
+{# Sections communes aux deux modèles de site : seules les sections remplies s'affichent. #}
+{% if event.start_datetime %}
+<div class="cd" data-countdown="{{ event.start_datetime|date:'U' }}000" translate="no">
+  <span class="cd-label">{% translate "Plus que…" %}</span>
+  <div><b data-u="d">--</b><span>{% translate "Jours" %}</span></div><div><b data-u="h">--</b><span>{% translate "Heures" %}</span></div>
+  <div><b data-u="m">--</b><span>{% translate "Min" %}</span></div><div><b data-u="s">--</b><span>{% translate "Sec" %}</span></div>
+</div>
+{% endif %}
+{% if story %}
+<section id="story" class="sec"><div class="eyebrow">{% translate "Notre histoire" %}</div><h2>{% translate "Notre histoire d’amour" %}</h2>
+  <div class="story">{% for s in story %}<div class="st">{% if s.image %}<img src="{{ s.image.url }}" alt="{{ s.title|tr:lang }}" loading="lazy">{% endif %}<div><h3>{{ s.title|tr:lang }}</h3>{% if s.text|tr:lang %}<p>{{ s.text|tr:lang|linebreaksbr }}</p>{% endif %}</div></div>{% endfor %}</div>
+</section>
+{% endif %}
+{% if venues %}
+<section id="events" class="sec"><div class="eyebrow">{% translate "Programme" %}</div><h2>{% translate "Le programme de la journée" %}</h2>
+  <div class="evgrid">{% for v in venues %}<div class="ev">{% if v.image %}<img src="{{ v.image.url }}" alt="" loading="lazy">{% endif %}<small>{{ v.start|time:"H:i" }}{% if v.end %} – {{ v.end|time:"H:i" }}{% endif %}</small><b>{{ v.name|tr:lang }}</b>{% if v.address %}<div class="addr">{{ v.address }}</div>{% endif %}<a href="{% url 'map' event.slug %}?lang={{ lang }}">🧭 {% translate "Y aller" %}</a></div>{% endfor %}</div>
+</section>
+{% endif %}
+{% if song %}
+<section id="music" class="sec"><div class="eyebrow">{% translate "Musique" %}</div><h2>{% translate "La chanson de la fête" %}</h2>
+  <div class="music"><div class="vinyl" aria-hidden="true"></div><div style="flex:1;min-width:150px"><b>{{ song.title }}</b><div class="addr">{{ song.artist }}</div>{% if song.audio %}<audio controls preload="none" src="{{ song.audio }}" style="width:100%;margin-top:6px"></audio>{% endif %}</div>
+  {% if song.youtube %}<a class="stream yt" href="{{ song.youtube }}" target="_blank" rel="noopener">▶ {% translate "Streamer sur" %} YouTube</a>{% endif %}{% if song.spotify %}<a class="stream sp" href="{{ song.spotify }}" target="_blank" rel="noopener">{% translate "Streamer sur" %} Spotify</a>{% endif %}</div>
+</section>
+{% endif %}
+<section id="rsvp" class="sec center"><div class="eyebrow">RSVP</div><h2>{% translate "Serez-vous des nôtres ?" %}</h2>
+  <div class="ctas"><a class="cta" href="{% url 'rsvp' event.slug %}?lang={{ lang }}">{% translate "Répondre à l’invitation" %}</a>
+  {% if 'cadeaux' in event.services %}<a class="cta ghost" href="{% url 'gift_list' event.slug %}?lang={{ lang }}">🎁 {% translate "Liste de cadeaux" %}</a>{% endif %}
+  {% if 'mur' in event.services %}<a class="cta ghost" href="{% url 'wall' event.slug %}?lang={{ lang }}">💬 {% translate "Mur des vœux" %}</a>{% endif %}</div>
+</section>
+<footer class="foot"><div class="fname">{{ event.title|tr:lang }}</div>
+  {% if event.social_links %}<div class="socials">{% for k, u in event.social_links.items %}{% if u %}<a href="{{ u }}" target="_blank" rel="noopener">{{ k }}</a>{% endif %}{% endfor %}</div>{% endif %}
+  <p>© Miel Production</p></footer>

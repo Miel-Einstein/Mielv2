@@ -1,0 +1,772 @@
+"""API JSON.
+
+- /api/e/<slug>/...  : réservée à l'organisateur connecté (propriétaire de l'événement)
+- /api/p/<slug>/...  : publique (invités) ; l'identité passe par le jeton personnel
+"""
+import json
+from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
+from functools import wraps
+
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.http import Http404, HttpResponseBadRequest, JsonResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods
+
+from events import serializers as S
+from events.models import (AlerterItem, BotSession, Category, Child, Companion, Contact, DeliveryOption, Event, Gift,
+                           GiftReservation, Guest, Moment, Reaction, Role, StoryStep, Table, Venue, Visitor, Wish, t)
+from events.services import alerter, notify, seating
+from events.services.defaults import CATEGORY_COLORS, reset_alerter
+from events.services.realtime import broadcast
+
+
+# ---------------------------------------------------------------- outils
+def body(request):
+    if request.content_type and request.content_type.startswith("application/json"):
+        try:
+            return json.loads(request.body or b"{}")
+        except json.JSONDecodeError:
+            return {}
+    return request.POST.dict()
+
+
+def ok(data=None, status=200):
+    return JsonResponse(data if data is not None else {"ok": True}, status=status, safe=False)
+
+
+def err(msg, status=400):
+    return JsonResponse({"error": msg}, status=status)
+
+
+def owner_api(view):
+    @wraps(view)
+    @login_required
+    def wrapper(request, slug, *args, **kwargs):
+        event = get_object_or_404(Event, slug=slug)
+        if event.owner_id != request.user.id and not request.user.is_superuser:
+            raise Http404
+        return view(request, event, *args, **kwargs)
+
+    return wrapper
+
+
+def public_api(view):
+    @wraps(view)
+    def wrapper(request, slug, *args, **kwargs):
+        event = get_object_or_404(Event, slug=slug)
+        return view(request, event, *args, **kwargs)
+
+    return wrapper
+
+
+def as_lang_dict(value, langs):
+    if isinstance(value, dict):
+        return {k: str(v).strip() for k, v in value.items() if k in langs or k == "fr"}
+    return {langs[0] if langs else "fr": str(value or "").strip()}
+
+
+def parse_time(v):
+    if not v:
+        return None
+    try:
+        return datetime.strptime(v[:5], "%H:%M").time()
+    except ValueError:
+        return None
+
+
+def identity(event, token):
+    """Invité (carte) ou visiteur (nom saisi sur le mur) correspondant au jeton."""
+    if not token:
+        return None
+    g = event.guests.filter(token=token).first()
+    if g:
+        return {"token": g.token, "name": g.full_name, "first": g.first_name, "guest": g}
+    v = event.visitors.filter(token=token).first()
+    if v:
+        return {"token": v.token, "name": v.name, "first": v.name.split(" ")[0], "guest": None}
+    return None
+
+
+# ---------------------------------------------------------------- événement
+EVENT_FIELDS = {"type", "title", "subtitle", "date", "time", "timezone", "languages", "services", "card_template",
+                "site_template", "kids_invited", "kids_table", "age_with_parents", "age_kids_max", "baby_chair",
+                "supervisor_name", "max_companions", "ask_languages", "conversation_languages", "budget", "currency",
+                "guest_target", "song", "telegram_chat_id", "social_links"}
+
+
+@require_http_methods(["GET", "PATCH", "POST"])
+@owner_api
+def event_detail(request, event):
+    if request.method == "GET":
+        return ok(S.event_data(event))
+    data = body(request)
+    type_changed = "type" in data and data["type"] != event.type
+    for k, v in data.items():
+        if k not in EVENT_FIELDS:
+            continue
+        if k == "date":
+            event.date = datetime.strptime(v, "%Y-%m-%d").date() if v else None
+        elif k == "time":
+            event.start_time = parse_time(v) or event.start_time
+        elif k == "song":
+            event.song_id = int(v) if v else None
+        elif k == "budget":
+            try:
+                event.budget = Decimal(str(v or 0))
+            except InvalidOperation:
+                return err("Budget invalide")
+        elif k in ("title", "subtitle"):
+            setattr(event, k, as_lang_dict(v, data.get("languages", event.languages)))
+        elif k == "languages":
+            langs = [l for l in v if l in ("fr", "en", "it", "ln")]
+            if not langs:
+                return err("Choisissez au moins une langue")
+            event.languages = langs
+        elif k == "services":
+            services = list(dict.fromkeys(["carte", *v]))
+            if event.type != "mariage" and data.get("type", event.type) != "mariage":
+                services = [s for s in services if s != "site"]
+            event.services = services
+        else:
+            setattr(event, k, v)
+    if event.type != "mariage":
+        event.services = [s for s in event.services if s != "site"]
+    event.age_kids_max = max(event.age_kids_max, event.age_with_parents)
+    event.save()
+    if type_changed:
+        reset_alerter(event)
+    if {"kids_invited", "kids_table", "age_with_parents", "age_kids_max", "baby_chair"} & set(data):
+        seating.clean_seats(event)
+    return ok(S.event_data(event))
+
+
+@require_http_methods(["POST"])
+@owner_api
+def event_upload(request, event):
+    field = request.POST.get("field")
+    f = request.FILES.get("file")
+    if field not in ("cover_image", "cover_image_2") or not f:
+        return err("Fichier manquant")
+    setattr(event, field, f)
+    event.save()
+    return ok({"url": getattr(event, field).url})
+
+
+@require_http_methods(["PUT", "POST"])
+@owner_api
+def categories(request, event):
+    items = json.loads(request.body or b"[]")
+    if not items:
+        return err("Gardez au moins une catégorie")
+    keep = []
+    with transaction.atomic():
+        for i, it in enumerate(items):
+            c = event.categories.filter(id=it.get("id")).first() if it.get("id") else None
+            c = c or Category(event=event)
+            c.order, c.name, c.is_honor = i, as_lang_dict(it.get("name"), event.languages), bool(it.get("is_honor"))
+            c.color = it.get("color") or CATEGORY_COLORS[i % len(CATEGORY_COLORS)]
+            c.save()
+            keep.append(c.id)
+        event.categories.exclude(id__in=keep).delete()
+    return ok([S.category_data(c) for c in event.categories.all()])
+
+
+@require_http_methods(["PUT", "POST"])
+@owner_api
+def venues(request, event):
+    items = json.loads(request.body or b"[]")
+    keep = []
+    with transaction.atomic():
+        for i, it in enumerate(items):
+            v = event.venues.filter(id=it.get("id")).first() if it.get("id") else None
+            v = v or Venue(event=event)
+            v.order, v.name = i, as_lang_dict(it.get("name"), event.languages)
+            v.kind = it.get("kind") or "ceremonie"
+            v.start, v.end = parse_time(it.get("start")), parse_time(it.get("end"))
+            for f in ("address", "parking", "entrance", "landmark", "contact"):
+                setattr(v, f, (it.get(f) or "")[:255])
+            v.lat = float(it["lat"]) if it.get("lat") not in (None, "") else None
+            v.lng = float(it["lng"]) if it.get("lng") not in (None, "") else None
+            v.save()
+            keep.append(v.id)
+        event.venues.exclude(id__in=keep).delete()
+    return ok([S.venue_data(v) for v in event.venues.all()])
+
+
+@require_http_methods(["PUT", "POST"])
+@owner_api
+def story(request, event):
+    items = json.loads(request.body or b"[]")
+    keep = []
+    with transaction.atomic():
+        for i, it in enumerate(items):
+            s = event.story.filter(id=it.get("id")).first() if it.get("id") else None
+            s = s or StoryStep(event=event)
+            s.order, s.title, s.text = i, as_lang_dict(it.get("title"), event.languages), as_lang_dict(it.get("text"), event.languages)
+            s.save()
+            keep.append(s.id)
+        event.story.exclude(id__in=keep).delete()
+    return ok([S.story_data(s) for s in event.story.all()])
+
+
+@require_http_methods(["POST"])
+@owner_api
+def story_image(request, event, pk):
+    s = get_object_or_404(StoryStep, pk=pk, event=event)
+    if not request.FILES.get("file"):
+        return err("Fichier manquant")
+    s.image = request.FILES["file"]
+    s.save()
+    return ok(S.story_data(s))
+
+
+# ---------------------------------------------------------------- bot
+@require_http_methods(["GET", "PUT", "POST"])
+@owner_api
+def bot_state(request, event):
+    bot, _ = BotSession.objects.get_or_create(event=event)
+    if request.method != "GET":
+        data = body(request)
+        bot.step = data.get("step", bot.step)[:40]
+        bot.log = data.get("log", bot.log)[-200:]
+        bot.paused = bool(data.get("paused", False))
+        bot.save()
+    return ok({"step": bot.step, "log": bot.log, "paused": bot.paused})
+
+
+# ---------------------------------------------------------------- alerter, rôles, contacts
+@require_http_methods(["GET", "POST"])
+@owner_api
+def alerter_list(request, event):
+    if request.method == "POST":
+        d = body(request)
+        if not d.get("title"):
+            return err("Titre manquant")
+        AlerterItem.objects.create(event=event, title=d["title"][:200], due_offset_days=int(d.get("due", -14)),
+                                   price=Decimal(str(d["price"])) if d.get("price") not in (None, "") else None,
+                                   role_id=d.get("role") or None)
+    return ok([S.alerter_data(i, event) for i in event.alerter_items.all()])
+
+
+@require_http_methods(["PATCH", "POST", "DELETE"])
+@owner_api
+def alerter_item(request, event, pk):
+    i = get_object_or_404(AlerterItem, pk=pk, event=event)
+    if request.method == "DELETE":
+        i.delete()
+        return ok()
+    d = body(request)
+    for f in ("title", "done", "active"):
+        if f in d:
+            setattr(i, f, d[f])
+    if "due" in d:
+        i.due_offset_days = int(d["due"])
+    if "price" in d:
+        i.price = Decimal(str(d["price"])) if d["price"] not in (None, "") else None
+    if "role" in d:
+        i.role = event.roles.filter(id=d["role"]).first() if d["role"] else None
+    i.save()
+    return ok(S.alerter_data(i, event))
+
+
+@require_http_methods(["POST"])
+@owner_api
+def alerter_reset(request, event):
+    reset_alerter(event)
+    return ok([S.alerter_data(i, event) for i in event.alerter_items.all()])
+
+
+def _contact_from(event, d):
+    emails = [e.strip() for e in (d.get("emails") or ([d["email"]] if d.get("email") else [])) if e and e.strip()]
+    was = [w.strip() for w in (d.get("whatsapp") or ([d["wa"]] if d.get("wa") else [])) if w and w.strip()]
+    if not d.get("name"):
+        raise ValueError("Nom manquant")
+    if not emails and not was and not d.get("telegram"):
+        raise ValueError("Ajoutez un e-mail, un numéro WhatsApp ou un Telegram")
+    return Contact.objects.create(event=event, name=d["name"][:120], title=(d.get("title") or "")[:120], emails=emails,
+                                  whatsapp_numbers=was, telegram_chat_id=d.get("telegram") or "",
+                                  language=d.get("language") or "fr", consent=bool(d.get("consent")))
+
+
+@require_http_methods(["GET", "POST"])
+@owner_api
+def roles(request, event):
+    if request.method == "POST":
+        d = body(request)
+        if not d.get("name"):
+            return err("Nom du rôle manquant")
+        try:
+            with transaction.atomic():
+                r = Role.objects.create(event=event, name=d["name"][:120])
+                for c in d.get("contacts", []):
+                    r.contacts.add(_contact_from(event, c))
+                for tid in d.get("tasks", []):
+                    event.alerter_items.filter(id=tid).update(role=r)
+        except ValueError as e:
+            return err(str(e))
+    return ok([S.role_data(r) for r in event.roles.prefetch_related("contacts")])
+
+
+@require_http_methods(["PATCH", "POST", "DELETE"])
+@owner_api
+def role_detail(request, event, pk):
+    r = get_object_or_404(Role, pk=pk, event=event)
+    if request.method == "DELETE":
+        mode = request.GET.get("tasks", "owner")
+        if mode == "delete":
+            r.tasks.all().delete()
+        elif mode.isdigit():
+            r.tasks.update(role=event.roles.filter(id=int(mode)).first())
+        else:
+            r.tasks.update(role=None)
+        r.delete()
+        return ok()
+    d = body(request)
+    if "name" in d:
+        r.name = d["name"][:120]
+    if "active" in d:
+        r.active = bool(d["active"])
+    r.save()
+    if d.get("add_contact"):
+        try:
+            r.contacts.add(_contact_from(event, d["add_contact"]))
+        except ValueError as e:
+            return err(str(e))
+    if d.get("remove_contact"):
+        r.contacts.remove(d["remove_contact"])
+    return ok(S.role_data(r))
+
+
+# ---------------------------------------------------------------- moments forts
+def launch_moment_obj(m, as_message=False):
+    m.status = "launched"
+    m.launched_as_message = as_message
+    m.ends_at = timezone.now() + timedelta(seconds=m.duration)
+    m.save()
+    data = S.live_moment(m.event)
+    broadcast(m.event, "moment", data)
+    return data
+
+
+@require_http_methods(["GET", "POST"])
+@owner_api
+def moments(request, event):
+    if request.method == "POST":
+        d = request.POST
+        title = json.loads(d.get("title") or "{}") if d.get("title", "").startswith("{") else {"fr": d.get("title", "")}
+        if not any(title.values()):
+            return err("Titre manquant")
+        m = Moment.objects.create(event=event, order=event.moments.count(), title=title, kind=d.get("kind", "reveal"),
+                                  message=json.loads(d["message"]) if d.get("message", "").startswith("{") else {"fr": d.get("message") or title.get("fr", "")},
+                                  duration=int(d.get("duration") or 10), effect=d.get("effect") or "confetti",
+                                  scheduled_at=datetime.fromisoformat(d["scheduled_at"]) if d.get("scheduled_at") else None)
+        if request.FILES.get("photo"):
+            m.photo = request.FILES["photo"]
+            m.save()
+    return ok([S.moment_data(m) for m in event.moments.all()])
+
+
+@require_http_methods(["POST", "DELETE"])
+@owner_api
+def moment_detail(request, event, pk):
+    m = get_object_or_404(Moment, pk=pk, event=event)
+    if request.method == "DELETE":
+        m.delete()
+        return ok()
+    if request.FILES.get("photo"):
+        m.photo = request.FILES["photo"]
+    for f in ("duration",):
+        if request.POST.get(f):
+            setattr(m, f, int(request.POST[f]))
+    if request.POST.get("reset"):
+        m.status, m.ends_at = "ready", None
+    m.save()
+    return ok(S.moment_data(m))
+
+
+@require_http_methods(["POST"])
+@owner_api
+def moment_launch(request, event, pk):
+    m = get_object_or_404(Moment, pk=pk, event=event)
+    as_message = bool(body(request).get("as_message"))
+    if m.needs_photo and not as_message:
+        return err("La photo de ce moment n'est pas chargée", 409)
+    return ok(launch_moment_obj(m, as_message))
+
+
+# ---------------------------------------------------------------- plan de table
+def tables_payload(event):
+    seating.clean_seats(event)
+    ps = seating.persons(event)
+    placed = {k for tb in event.tables.all() for k in tb.seats if k}
+    return {
+        "tables": [{"id": tb.id, "name": tb.name, "capacity": tb.capacity, "kind": tb.kind, "shape": tb.shape, "seats": tb.seats} for tb in event.tables.all()],
+        "persons": {p.key: p.as_dict() for p in ps},
+        "unplaced": [p.key for p in ps if p.key not in placed],
+        "categories": [S.category_data(c) for c in event.categories.all()],
+        "supervisor": event.supervisor_name,
+    }
+
+
+@require_http_methods(["GET", "PUT"])
+@owner_api
+def tables(request, event):
+    if request.method == "PUT":
+        items = json.loads(request.body or b"[]")
+        valid = {p.key for p in seating.persons(event)} | {seating.SUPERVISOR}
+        seen = set()
+        keep = []
+        with transaction.atomic():
+            for i, it in enumerate(items):
+                cap = max(1, min(30, int(it.get("capacity") or 8)))
+                seats = []
+                for k in (it.get("seats") or [])[:cap]:
+                    ok_key = k in valid and (k == seating.SUPERVISOR or k not in seen)
+                    seats.append(k if ok_key else None)
+                    if ok_key and k != seating.SUPERVISOR:
+                        seen.add(k)
+                seats += [None] * (cap - len(seats))
+                tb = event.tables.filter(id=it.get("id")).first() if it.get("id") else None
+                tb = tb or Table(event=event)
+                tb.order, tb.name, tb.capacity, tb.seats = i, (it.get("name") or "")[:120], cap, seats
+                tb.kind = it.get("kind") if it.get("kind") in ("std", "honor", "kids") else "std"
+                tb.shape = it.get("shape") if it.get("shape") in ("round", "rect") else "round"
+                tb.save()
+                keep.append(tb.id)
+            event.tables.exclude(id__in=keep).delete()
+    return ok(tables_payload(event))
+
+
+@require_http_methods(["POST"])
+@owner_api
+def tables_auto(request, event):
+    d = body(request)
+    seating.assign(event, cap=int(d.get("capacity") or 8), kids_cap=int(d.get("kids_capacity") or 10))
+    return ok(tables_payload(event))
+
+
+# ---------------------------------------------------------------- invités & tableau de bord
+@require_http_methods(["GET"])
+@owner_api
+def guests(request, event):
+    qs = event.guests.prefetch_related("companions", "children")
+    return ok([S.guest_data(g) for g in qs])
+
+
+@require_http_methods(["PATCH", "POST", "DELETE"])
+@owner_api
+def guest_detail(request, event, pk):
+    g = get_object_or_404(Guest, pk=pk, event=event)
+    if request.method == "DELETE":
+        g.delete()
+        seating.clean_seats(event)
+        return ok()
+    d = body(request)
+    if "arrived" in d:
+        _mark_arrived(g, bool(d["arrived"]))
+    if "category" in d:
+        g.category = event.categories.filter(id=d["category"]).first()
+        g.save()
+    return ok(S.guest_data(g))
+
+
+def arrivals_payload(event):
+    att = event.guests.filter(attending=True)
+    by_cat = []
+    for c in event.categories.all():
+        n = att.filter(category=c).count()
+        if n:
+            by_cat.append({"id": c.id, "name": c.name, "color": c.color, "total": n, "arrived": att.filter(category=c, arrived=True).count()})
+    return {"arrived": att.filter(arrived=True).count(), "total": att.count(), "by_category": by_cat,
+            "recent": [{"name": g.full_name, "at": g.arrived_at.isoformat() if g.arrived_at else None}
+                       for g in att.filter(arrived=True).order_by("-arrived_at")[:8]]}
+
+
+def _mark_arrived(g, value=True):
+    g.arrived = value
+    g.arrived_at = timezone.now() if value else None
+    g.save(update_fields=["arrived", "arrived_at"])
+    broadcast(g.event, "arrival", arrivals_payload(g.event))
+
+
+@require_http_methods(["GET"])
+@owner_api
+def dashboard(request, event):
+    ps = seating.persons(event)
+    return ok({
+        "responses": event.guests.count(),
+        "confirmed_people": len(ps),
+        "children": sum(1 for p in ps if p.type == "enfant"),
+        "budget": alerter.budget_status(event),
+        "guests": alerter.guest_status(event),
+        "warnings": alerter.warnings(event),
+        "arrivals": arrivals_payload(event),
+        "alerts_sent": [{"message": a.message, "at": a.created_at.isoformat()} for a in event.alert_logs.all()[:10]],
+        "wishes": [{"id": w.id, "author": w.author_name, "text": w.text, "hidden": w.hidden} for w in event.wishes.all()[:30]],
+        "guest_list": [S.guest_data(g) for g in event.guests.prefetch_related("companions", "children").order_by("-created_at")[:300]],
+    })
+
+
+@require_http_methods(["POST"])
+@owner_api
+def wish_hide(request, event, pk):
+    w = get_object_or_404(Wish, pk=pk, event=event)
+    w.hidden = not w.hidden
+    w.save()
+    broadcast(event, "wishes_changed", {})
+    return ok({"hidden": w.hidden})
+
+
+# ---------------------------------------------------------------- cadeaux (organisateur)
+def gift_data(g):
+    return {"id": g.id, "name": g.name, "description": g.description, "price": float(g.price) if g.price is not None else None,
+            "link": g.link, "quantity": g.quantity, "quantity_reserved": g.quantity_reserved}
+
+
+@require_http_methods(["GET", "POST"])
+@owner_api
+def gifts(request, event):
+    if request.method == "POST":
+        d = body(request)
+        if not d.get("name"):
+            return err("Nom manquant")
+        g = Gift.objects.create(event=event, name=d["name"][:200], description=d.get("description") or "",
+                                price=Decimal(str(d["price"])) if d.get("price") not in (None, "") else None,
+                                link=d.get("link") or "", quantity=max(1, int(d.get("quantity") or 1)))
+        return ok(gift_data(g), 201)
+    return ok([gift_data(g) for g in event.gifts.prefetch_related("reservations")])
+
+
+@require_http_methods(["GET", "PUT", "DELETE"])
+@owner_api
+def gift_detail(request, event, pk):
+    g = get_object_or_404(Gift, pk=pk, event=event)
+    if request.method == "DELETE":
+        g.delete()
+        return ok()
+    if request.method == "PUT":
+        d = body(request)
+        g.name = d.get("name", g.name)[:200]
+        g.description = d.get("description") or ""
+        g.price = Decimal(str(d["price"])) if d.get("price") not in (None, "") else None
+        g.link = d.get("link") or ""
+        g.quantity = max(1, int(d.get("quantity") or 1))
+        g.save()
+    return ok(gift_data(g))
+
+
+@require_http_methods(["GET", "POST"])
+@owner_api
+def delivery_options(request, event):
+    if request.method == "POST":
+        name = body(request).get("name", "").strip()
+        if not name:
+            return err("Nom manquant")
+        DeliveryOption.objects.create(event=event, name=name[:120])
+    return ok([{"id": o.id, "name": o.name} for o in event.delivery_options.all()])
+
+
+@require_http_methods(["PUT", "DELETE"])
+@owner_api
+def delivery_option_detail(request, event, pk):
+    o = get_object_or_404(DeliveryOption, pk=pk, event=event)
+    if request.method == "DELETE":
+        o.delete()
+        return ok()
+    o.name = body(request).get("name", o.name)[:120]
+    o.save()
+    return ok({"id": o.id, "name": o.name})
+
+
+@require_http_methods(["GET"])
+@owner_api
+def gift_reservations(request, event):
+    rs = GiftReservation.objects.filter(gift__event=event).select_related("gift", "delivery_option")
+    return ok([{"full_name": r.full_name, "cadeau_reserve": r.gift.name, "quantite_reservee": r.quantity,
+                "delivery_option_name": r.delivery_option.name if r.delivery_option else ""} for r in rs])
+
+
+# =================================================================== PUBLIC
+@require_http_methods(["POST"])
+@public_api
+def rsvp_submit(request, event):
+    d = body(request)
+    first, last = (d.get("first_name") or "").strip(), (d.get("last_name") or "").strip()
+    if not first:
+        return err("Le prénom est obligatoire")
+    lang = d.get("lang") if d.get("lang") in event.languages else event.languages[0]
+    attending = bool(d.get("attending", True))
+    cat = event.categories.filter(id=d.get("category"), is_honor=False).first() if d.get("category") else None
+    with transaction.atomic():
+        g = Guest.objects.create(event=event, first_name=first[:80], last_name=last[:80], email=(d.get("email") or "")[:254],
+                                 phone=(d.get("phone") or "")[:40], country=(d.get("country") or "")[:80], attending=attending,
+                                 category=cat, nav_language=lang, message=(d.get("message") or "")[:2000],
+                                 languages=[str(l)[:30] for l in (d.get("languages") or [])][:8])
+        if attending:
+            for name in (d.get("companions") or [])[: event.max_companions]:
+                Companion.objects.create(guest=g, first_name=(name or "Accompagnant·e")[:80])
+            if event.kids_invited:
+                for k in (d.get("children") or [])[:10]:
+                    if (k.get("name") or "").strip():
+                        Child.objects.create(guest=g, first_name=k["name"].strip()[:80], age=max(0, min(17, int(k.get("age") or 0))))
+        if (d.get("wish") or "").strip() and event.has("mur"):
+            w = Wish.objects.create(event=event, author_name=g.full_name, author_token=g.token, text=d["wish"].strip()[:600])
+            broadcast(event, "wish", S.wish_data(w))
+    return ok({"token": g.token, "card_url": event.public_url("card", token=g.token) + f"?lang={lang}",
+               "pdf_url": event.public_url("card_pdf", token=g.token) + f"?lang={lang}"}, 201)
+
+
+@require_http_methods(["GET"])
+@public_api
+def live(request, event):
+    att = event.guests.filter(attending=True)
+    return ok({"server_now": timezone.now().timestamp() * 1000, "moment": S.live_moment(event),
+               "arrived": att.filter(arrived=True).count(), "total": att.count(),
+               "wishes": event.wishes.filter(hidden=False).count()})
+
+
+@require_http_methods(["GET"])
+@public_api
+def me(request, event):
+    who = identity(event, request.GET.get("g"))
+    if not who:
+        return ok({"known": False})
+    table = None
+    if who["guest"]:
+        tb, idx = seating.seat_of(event, seating.person_key(who["guest"].id, "p"))
+        if tb:
+            table = {"label": tb.label() if tb.name else f"Table {tb.order + 1}", "seat": idx + 1}
+    return ok({"known": True, "name": who["name"], "first": who["first"], "table": table,
+               "arrived": bool(who["guest"] and who["guest"].arrived)})
+
+
+@require_http_methods(["POST"])
+@public_api
+def visitor(request, event):
+    name = (body(request).get("name") or "").strip()
+    if len(name) < 2:
+        return err("Indiquez votre prénom et votre nom")
+    v = Visitor.objects.create(event=event, name=name[:120])
+    return ok({"token": v.token, "name": v.name})
+
+
+@require_http_methods(["GET", "POST"])
+@public_api
+def wishes(request, event):
+    token = request.GET.get("g") or body(request).get("token")
+    if request.method == "POST":
+        who = identity(event, token)
+        if not who:
+            return err("Dites-nous d'abord qui vous êtes", 403)
+        text = (body(request).get("text") or "").strip()
+        if not text:
+            return err("Le message est vide")
+        w = Wish.objects.create(event=event, author_name=who["name"], author_token=who["token"], text=text[:600])
+        broadcast(event, "wish", S.wish_data(w))
+        return ok(S.wish_data(w, token), 201)
+    qs = event.wishes.filter(hidden=False).prefetch_related("reactions")[:200]
+    return ok([S.wish_data(w, token) for w in qs])
+
+
+@require_http_methods(["DELETE", "POST"])
+@public_api
+def wish_delete(request, event, pk):
+    w = get_object_or_404(Wish, pk=pk, event=event)
+    token = request.GET.get("g") or body(request).get("token")
+    if not token or w.author_token != token:
+        return err("Vous ne pouvez supprimer que vos propres vœux", 403)
+    w.delete()
+    broadcast(event, "wish_deleted", {"id": pk})
+    return ok()
+
+
+@require_http_methods(["POST"])
+@public_api
+def wish_react(request, event, pk):
+    w = get_object_or_404(Wish, pk=pk, event=event, hidden=False)
+    d = body(request)
+    who = identity(event, d.get("token"))
+    if not who:
+        return err("Dites-nous d'abord qui vous êtes", 403)
+    emoji = d.get("emoji")
+    if emoji not in Reaction.EMOJIS:
+        return HttpResponseBadRequest()
+    r = Reaction.objects.filter(wish=w, token=who["token"], emoji=emoji).first()
+    if r:
+        r.delete()
+        added = False
+    else:
+        Reaction.objects.create(wish=w, token=who["token"], emoji=emoji)
+        added = True
+    data = S.wish_data(w)
+    broadcast(event, "reaction", {"id": w.id, "reactions": data["reactions"], "emoji": emoji if added else None})
+    return ok(S.wish_data(w, who["token"]))
+
+
+@require_http_methods(["POST"])
+@public_api
+def moment_react(request, event):
+    """Réaction emoji pendant la révélation d'un moment fort (sans enregistrement)."""
+    emoji = body(request).get("emoji")
+    if emoji in Reaction.EMOJIS:
+        broadcast(event, "float", {"emoji": emoji})
+    return ok()
+
+
+@require_http_methods(["POST"])
+@public_api
+def arrived(request, event):
+    who = identity(event, body(request).get("token"))
+    if not who or not who["guest"]:
+        return err("Invité inconnu", 404)
+    if not who["guest"].arrived:
+        _mark_arrived(who["guest"], True)
+    return ok({"arrived": True})
+
+
+@require_http_methods(["POST"])
+@public_api
+def media_upload(request, event):
+    who = identity(event, request.POST.get("token"))
+    f = request.FILES.get("file")
+    if not who:
+        return err("Dites-nous d'abord qui vous êtes", 403)
+    if not f:
+        return err("Aucun fichier")
+    if f.size > 15 * 1024 * 1024:
+        return err("Fichier trop lourd (15 Mo maximum)")
+    is_video = (f.content_type or "").startswith("video/")
+    caption = f"📸 {who['name']}" + (f" — {request.POST.get('caption')}" if request.POST.get("caption") else "")
+    sent = notify.send_telegram_media(event.telegram_chat_id, f, caption, is_video)
+    if not sent:
+        return err("L'envoi vers Telegram n'est pas configuré pour cet événement", 503)
+    return ok({"sent": True})
+
+
+@require_http_methods(["GET"])
+@public_api
+def public_gifts(request, event):
+    return ok({"gifts": [gift_data(g) for g in event.gifts.prefetch_related("reservations")],
+               "delivery_options": [{"id": o.id, "name": o.name} for o in event.delivery_options.all()]})
+
+
+@require_http_methods(["POST"])
+@public_api
+def gift_reserve(request, event, pk):
+    g = get_object_or_404(Gift, pk=pk, event=event)
+    d = body(request)
+    qty = max(1, int(d.get("quantity") or 1))
+    who = identity(event, d.get("token"))
+    name = (who["name"] if who else (d.get("full_name") or "")).strip()
+    if not name:
+        return err("Indiquez votre nom")
+    with transaction.atomic():
+        g = Gift.objects.select_for_update().get(pk=g.pk)
+        if g.quantity_reserved + qty > g.quantity:
+            return err("Ce cadeau n'est plus disponible en cette quantité", 409)
+        GiftReservation.objects.create(gift=g, full_name=name[:160], token=who["token"] if who else "", quantity=qty,
+                                       delivery_option=event.delivery_options.filter(id=d.get("delivery_option")).first())
+    return ok(gift_data(g))

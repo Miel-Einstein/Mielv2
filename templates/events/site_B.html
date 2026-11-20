@@ -1,0 +1,52 @@
+{% extends "base_guest.html" %}{% load i18n miel %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Montserrat:wght@300;400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+/* Modèle B — « Modern Romance » : bleu nuit, vieux rose, or rosé, ivoire */
+:root{--midnight:#1a2a3a;--dusty:#d4a5a5;--dusty-d:#b88383;--rosegold:#e8c4b8;--ivory:#faf7f2;--ivory-d:#f0ebe2;--charcoal:#2c2c2c;--shadow:rgba(26,42,58,.1)}
+body.siteB{background:var(--ivory);color:var(--charcoal);font-family:'Montserrat',sans-serif;font-weight:300}
+.siteB .guest-top{background:rgba(26,42,58,.95);border:none}
+.siteB .guest-top a:first-child{font-family:'Dancing Script',cursive!important;font-style:normal!important;color:#fff!important;font-size:26px!important}
+.siteB .guest-top .langs a{color:#fff;border-color:rgba(255,255,255,.3)}.siteB .guest-top .langs a.on{background:var(--dusty);color:#fff}
+.siteB .hero{min-height:min(92vh,800px);display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;position:relative;background:var(--midnight) center/cover no-repeat;padding:60px 16px}
+.siteB .hero::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(26,42,58,.7),rgba(212,165,165,.5))}
+.siteB .hero>div{position:relative}
+.siteB .hero small{font-size:.85rem;letter-spacing:8px;text-transform:uppercase}
+.siteB .hero h1{font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(3rem,10vw,7rem);color:#fff;margin:14px 0}
+.siteB .hero .div{width:80px;height:2px;background:var(--dusty);margin:18px auto}
+.siteB .hero .dt{font-family:'Playfair Display',serif;letter-spacing:4px;font-size:1.2rem}
+.siteB .hero .cta{margin-top:24px}
+.siteB .cd{background:var(--midnight);display:flex;justify-content:center;gap:2rem;padding:2rem;flex-wrap:wrap}
+.siteB .cd-label{display:none}.siteB .cd div{text-align:center}
+.siteB .cd b{display:block;font-family:'Playfair Display',serif;font-size:3rem;color:var(--dusty);font-variant-numeric:tabular-nums;line-height:1}.siteB .cd span{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:#fff}
+.siteB .sec{padding:clamp(56px,9vw,100px) 16px;max-width:1100px;margin:0 auto;text-align:center}
+.siteB .eyebrow{font-size:.75rem;letter-spacing:6px;text-transform:uppercase;color:var(--dusty);font-weight:600}
+.siteB h2{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,2.8rem);color:var(--midnight);margin:10px 0 36px}
+.siteB h2::after{content:'';display:block;width:60px;height:2px;background:var(--dusty);margin:18px auto 0}
+.siteB .story{position:relative;max-width:900px;margin:0 auto;text-align:left;display:flex;flex-direction:column;gap:28px;border-left:2px solid rgba(212,165,165,.4);padding-left:28px}
+.siteB .st{background:#fff;border-radius:15px;padding:1.5rem;box-shadow:0 10px 30px var(--shadow);display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));align-items:center;position:relative}
+.siteB .st::before{content:'';position:absolute;left:-37px;top:24px;width:16px;height:16px;border-radius:50%;background:var(--dusty);border:3px solid #fff}
+.siteB .st img{width:100%;border-radius:12px;aspect-ratio:4/3;object-fit:cover}
+.siteB .st h3{font-family:'Playfair Display',serif;color:var(--dusty-d);font-size:1.5rem}
+.siteB .evgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.siteB .ev{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 15px 35px var(--shadow);padding-bottom:18px;display:flex;flex-direction:column;gap:6px}
+.siteB .ev img{width:100%;height:220px;object-fit:cover}
+.siteB .ev small{color:var(--dusty);letter-spacing:3px;font-weight:600;margin-top:12px}
+.siteB .ev b{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--midnight)}
+.siteB .ev a{color:var(--dusty-d);font-weight:600}.siteB .addr{color:#8a8a8a;font-size:.9rem}
+.siteB .music{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;border-radius:20px;padding:20px;box-shadow:0 10px 30px var(--shadow);text-align:left}
+.siteB .ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.siteB .cta{display:inline-flex;align-items:center;min-height:48px;padding:1rem 2.5rem;border-radius:50px;background:var(--dusty);color:#fff;text-decoration:none;font-weight:600;letter-spacing:2px;text-transform:uppercase;font-size:.8rem}
+.siteB .cta:hover{background:var(--dusty-d)}.siteB .cta.ghost{background:transparent;color:var(--dusty-d);border:1px solid var(--dusty)}
+.siteB .foot{background:var(--midnight);color:#fff;text-align:center;padding:4rem 16px 2rem}
+.siteB .fname{font-family:'Dancing Script',cursive;font-size:2.6rem}
+.siteB .socials{display:flex;gap:16px;justify-content:center;margin:16px 0}.siteB .socials a{color:var(--rosegold)}
+</style>
+{% endblock %}
+{% block bodyclass %}siteB{% endblock %}
+{% block main %}
+<header class="hero" style="{% if event.cover_image %}background-image:url('{{ event.cover_image.url }}'){% endif %}">
+  <div>{% if event.subtitle|tr:lang %}<small>{{ event.subtitle|tr:lang }}</small>{% endif %}<h1>{{ event.title|tr:lang }}</h1><div class="div"></div>{% if event.date %}<div class="dt">{{ event.date|date:"j F Y" }}</div>{% endif %}<a class="cta" href="{% url 'rsvp' event.slug %}?lang={{ lang }}">{% translate "Répondre à l’invitation" %}</a></div>
+</header>
+{% include "events/partials/site_sections.html" %}
+{% endblock %}

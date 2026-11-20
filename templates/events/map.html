@@ -1,0 +1,105 @@
+{% extends "base_guest.html" %}{% load i18n miel %}
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+#lmap{height:min(62vh,560px);border-radius:20px;border:1px solid var(--line)}
+.leaflet-container{font-family:var(--body)}
+.route-anim{stroke-dasharray:10 9;animation:dash 1s linear infinite}
+.vpin{width:34px;height:34px;border-radius:50%;background:#d4782c;color:#fff;font-weight:800;display:grid;place-items:center;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.vpin.on{background:#a6431f;transform:scale(1.15)}
+.medot{width:18px;height:18px;border-radius:50%;background:#2f7bf6;border:3px solid #fff;box-shadow:0 0 0 0 rgba(47,123,246,.5);animation:mp 1.8s infinite}
+@keyframes mp{70%{box-shadow:0 0 0 18px rgba(47,123,246,0)}100%{box-shadow:0 0 0 0 rgba(47,123,246,0)}}
+.map-stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.map-stats b{font-family:var(--display);font-size:26px;color:var(--honey);font-variant-numeric:tabular-nums;display:block}
+</style>
+{% endblock %}
+{% block main %}
+<div class="wrap">
+  <div class="map-layout">
+    <div>
+      <div id="lmap" role="application" aria-label="{% translate 'Carte' %}"></div>
+      <div class="card" style="margin-top:10px">
+        <div class="map-stats"><div><span class="muted" style="font-size:11px">{% translate "Distance" %}</span><b id="mDist">—</b></div><div><span class="muted" style="font-size:11px">{% translate "Direction" %}</span><b id="mDir" style="font-size:20px">—</b></div><div><span class="muted" style="font-size:11px">{% translate "Arrivée estimée" %}</span><b id="mEta" style="font-size:20px">—</b></div></div>
+        <div id="mLate" class="warn-box" style="margin-top:10px" hidden></div>
+        <div class="row" style="margin-top:12px"><button class="btn gold" id="goBtn" type="button">🧭 {% translate "Y aller" %}</button><button class="btn ghost sm" id="ecoBtn" type="button">🔋 {% translate "Mode économie" %}</button></div>
+        <p class="hint">{% translate "Votre position reste sur votre téléphone : elle n’est jamais envoyée." %} {% translate "La distance est calculée en ligne droite." %}</p>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card"><b>{% translate "Parcours de la journée" %}</b><div class="steps-day" id="days" style="margin-top:10px"></div></div>
+      <div class="card"><b>{% translate "Me guider avec mon appli" %}</b><div class="row" style="margin-top:10px" id="deep"></div></div>
+      <div class="card" id="infos"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const {$,$$,esc,api,toast,openGlass,closeGlass,tr}=Miel;
+  const V={{ venues_json|to_json }},SLUG=MIEL_PUBLIC.slug,LANG=MIEL_PUBLIC.lang,DATE="{{ event.date|date:'Y-m-d' }}";
+  const T={dirs:["{% translate 'nord' %}","{% translate 'nord-est' %}","{% translate 'est' %}","{% translate 'sud-est' %}","{% translate 'sud' %}","{% translate 'sud-ouest' %}","{% translate 'ouest' %}","{% translate 'nord-ouest' %}"],
+    late:"{% translate '%(place)s commence dans %(min)s min, il vous reste environ %(eta)s min de trajet.' %}",welcome:"{% translate 'Bienvenue' %}",arrivedAt:"{% translate 'Vous êtes arrivé·e à' %}",
+    iam:"{% translate '✅ Je suis arrivé·e' %}",wall:"{% translate '💬 Laisser un vœu' %}",close:"{% translate 'Fermer' %}",seat:"{% translate 'Votre place vous attend 💛' %}",
+    thanks:"{% translate 'Merci ! Les hôtes savent que vous êtes là.' %}",noGeo:"{% translate 'Activez la localisation pour vous voir sur la carte.' %}",
+    parking:"🅿️",entrance:"🚪",landmark:"📍",contact:"📞",eco:"{% translate 'Position mise à jour moins souvent pour économiser la batterie' %}"};
+  if(typeof L==='undefined'){document.getElementById('lmap').innerHTML='<p class="muted" style="padding:20px">'+esc(T.noGeo)+'</p>';return}
+  const pts=V.filter(v=>v.lat!=null&&v.lng!=null);
+  const map=L.map('lmap',{zoomControl:true}).setView(pts.length?[pts[0].lat,pts[0].lng]:[41.9,12.49],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+  if(pts.length>1)map.fitBounds(pts.map(v=>[v.lat,v.lng]),{padding:[40,40]});
+  let token=new URLSearchParams(location.search).get('g');try{token=token||localStorage.getItem('miel_g_'+SLUG)}catch(e){}
+  // destination : premier lieu dont l'heure de fin n'est pas passée (le jour J)
+  const endMs=v=>v.end?new Date(DATE+'T'+v.end+':00').getTime():Infinity, startMs=v=>v.start?new Date(DATE+'T'+v.start+':00').getTime():null;
+  let dest=(V.find(v=>Date.now()<endMs(v))||V[0]||{}).id, eco=false, me=null, line=null, meMarker=null, acc=null, watch=null, arrivedShown=false;
+  const markers={};
+  pts.forEach((v,i)=>{markers[v.id]=L.marker([v.lat,v.lng],{icon:L.divIcon({className:'',html:'<div class="vpin">'+(V.indexOf(v)+1)+'</div>',iconSize:[34,34],iconAnchor:[17,17]})}).addTo(map).bindTooltip(esc(tr(v.name,LANG)))});
+  function hav(a,b){const R=6371,dl=(b[0]-a[0])*Math.PI/180,dn=(b[1]-a[1])*Math.PI/180,x=Math.sin(dl/2)**2+Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+  function bearing(a,b){const y=Math.sin((b[1]-a[1])*Math.PI/180)*Math.cos(b[0]*Math.PI/180),x=Math.cos(a[0]*Math.PI/180)*Math.sin(b[0]*Math.PI/180)-Math.sin(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.cos((b[1]-a[1])*Math.PI/180);return (Math.atan2(y,x)*180/Math.PI+360)%360}
+  function side(){
+    const d=V.find(v=>v.id===dest);
+    $('#days').innerHTML=V.map((v,i)=>`<button type="button" class="${v.id===dest?'on':''}" data-d="${v.id}"><span class="n">${i+1}</span><span style="flex:1"><b>${esc(tr(v.name,LANG))}</b><br><small class="muted">${esc(v.start)}${v.end?' – '+esc(v.end):''}${v.address?' · '+esc(v.address):''}</small></span></button>`).join('');
+    $$('[data-d]').forEach(b=>b.onclick=()=>{dest=+b.dataset.d;arrivedShown=false;side();update()});
+    Object.entries(markers).forEach(([id,m])=>{const el=m.getElement();el&&el.firstChild&&el.firstChild.classList.toggle('on',+id===dest)});
+    if(!d){$('#deep').innerHTML='';$('#infos').innerHTML='';return}
+    const q=d.lat!=null?d.lat+','+d.lng:encodeURIComponent(d.address||tr(d.name,LANG));
+    $('#deep').innerHTML=`<a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${q}">Google Maps</a>`+(d.lat!=null?`<a class="btn sm" target="_blank" rel="noopener" href="https://waze.com/ul?ll=${q}&navigate=yes">Waze</a><a class="btn sm" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=${q}">Plans</a>`:'');
+    const inf=['parking','entrance','landmark','contact'].filter(k=>d[k]);
+    $('#infos').innerHTML=`<b>${esc(tr(d.name,LANG))}</b>`+(inf.length?`<div style="font-size:13.5px;margin-top:8px;display:flex;flex-direction:column;gap:6px">${inf.map(k=>`<div>${T[k]} ${esc(d[k])}</div>`).join('')}</div>`:'');
+  }
+  function update(){
+    const d=V.find(v=>v.id===dest);if(!me||!d||d.lat==null)return;
+    const to=[d.lat,d.lng],km=hav(me,to);
+    if(line)line.setLatLngs([me,to]);else line=L.polyline([me,to],{color:'#d4782c',weight:4,className:'route-anim'}).addTo(map);
+    $('#mDist').textContent=km<1?Math.round(km*1000)+' m':km.toFixed(1)+' km';
+    $('#mDir').textContent=T.dirs[Math.round(bearing(me,to)/45)%8];
+    const eta=Math.max(1,Math.round(km/30*60));$('#mEta').textContent='~'+eta+' min';
+    const st=startMs(d),left=st?Math.round((st-Date.now())/60000):null;
+    const late=left!==null&&left>0&&left<eta;
+    $('#mLate').hidden=!late;if(late)$('#mLate').textContent='😅 '+T.late.replace('%(place)s',tr(d.name,LANG)).replace('%(min)s',left).replace('%(eta)s',eta);
+    if(km<0.1&&!arrivedShown){arrivedShown=true;arrival(d)}
+  }
+  async function arrival(d){
+    Miel.confetti(90);let info={known:false};if(token){try{info=await api('/api/p/'+SLUG+'/me/?g='+encodeURIComponent(token))}catch(e){}}
+    const g=openGlass(`<h3>🎉 ${esc(T.welcome)}${info.known?' '+esc(info.first):''} !</h3><p>${esc(T.arrivedAt)} <b>${esc(tr(d.name,LANG))}</b>.</p>${info.table?`<div style="font-family:var(--display);font-size:34px;color:#f3cf8a;margin:8px 0">${esc(info.table.label)}</div><p style="font-size:13px">${esc(T.seat)}</p>`:''}<div class="grid" style="margin-top:12px">${info.known&&!info.arrived?`<button class="btn gold" type="button" id="iam">${esc(T.iam)}</button>`:''}<div class="row" style="justify-content:center"><a class="btn sm" href="/e/${SLUG}/mur/?lang=${LANG}">${esc(T.wall)}</a><button class="btn sm ghost" type="button" id="aClose">${esc(T.close)}</button></div></div>`);
+    $('#aClose',g).onclick=closeGlass;const b=$('#iam',g);if(b)b.onclick=async()=>{try{await api('/api/p/'+SLUG+'/arrived/',{method:'POST',json:{token}});closeGlass();toast(T.thanks)}catch(e){toast(e.message)}};
+  }
+  function start(){
+    if(!navigator.geolocation)return toast(T.noGeo);
+    if(watch!==null)navigator.geolocation.clearWatch(watch);
+    watch=navigator.geolocation.watchPosition(p=>{me=[p.coords.latitude,p.coords.longitude];
+      if(!meMarker){meMarker=L.marker(me,{icon:L.divIcon({className:'',html:'<div class="medot"></div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map);acc=L.circle(me,{radius:p.coords.accuracy,color:'#2f7bf6',weight:1,fillOpacity:.1}).addTo(map);const d=V.find(v=>v.id===dest);if(d&&d.lat!=null)map.fitBounds([me,[d.lat,d.lng]],{padding:[50,50]})}
+      else{meMarker.setLatLng(me);acc.setLatLng(me).setRadius(p.coords.accuracy)}
+      update()},()=>toast(T.noGeo),{enableHighAccuracy:!eco,maximumAge:eco?60000:5000,timeout:20000});
+    $('#goBtn').textContent='⏸';
+  }
+  function stop(){if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}$('#goBtn').textContent='🧭';}
+  $('#goBtn').onclick=()=>watch===null?start():stop();
+  $('#ecoBtn').onclick=()=>{eco=!eco;$('#ecoBtn').classList.toggle('gold',eco);if(eco)toast(T.eco);if(watch!==null)start()};
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')stop()});
+  setInterval(()=>{const nd=(V.find(v=>Date.now()<endMs(v))||{}).id;if(nd&&nd!==dest&&DATE===new Date().toISOString().slice(0,10)){dest=nd;arrivedShown=false;side();update()}},60000);
+  side();
+})();
+</script>
+{% endblock %}
