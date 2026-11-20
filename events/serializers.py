@@ -65,7 +65,7 @@ def event_data(e):
     return {
         "slug": e.slug, "type": e.type, "title": e.title, "subtitle": e.subtitle,
         "date": e.date.isoformat() if e.date else "", "time": e.start_time.strftime("%H:%M") if e.start_time else "",
-        "timezone": e.timezone, "languages": e.languages, "services": e.services, "card_template": e.card_template,
+        "timezone": e.timezone, "languages": e.languages, "services": e.services, "card_template": e.card_template, "card_message": e.card_message or {}, "card_theme": e.card_theme or {}, "cover_focus": e.cover_focus or {},
         "site_template": e.site_template, "cover_image": _url(e.cover_image), "cover_image_2": _url(e.cover_image_2),
         "kids_invited": e.kids_invited, "kids_table": e.kids_table, "age_with_parents": e.age_with_parents,
         "age_kids_max": e.age_kids_max, "baby_chair": e.baby_chair, "supervisor_name": e.supervisor_name,

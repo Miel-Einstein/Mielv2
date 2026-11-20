@@ -1,3 +1,57 @@
 /* Cartes d'invitation : styles complémentaires (les trois modèles sont dans miel.css) */
-.icard .ph{background-size:cover;background-position:center}
+.icard .ph{background-size:cover;background-position:center;overflow:hidden}
+.icard .ph>*:not(.fimg){position:relative;z-index:1}
+.icard .ph .badge{position:absolute}
 .card-page{max-width:520px;margin:0 auto;padding:24px 16px 60px}
+
+/* Photo cadrée (point de cadrage + zoom) : remplit son cadre */
+.fimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;max-width:none}
+.qr{display:grid;place-items:center}
+a.qr{cursor:pointer;-webkit-tap-highlight-color:transparent}
+a.qr:focus-visible{outline:3px solid #e9a83b;outline-offset:3px}
+.pc-open{display:flex;width:fit-content;margin-top:6px;font-weight:700;font-size:12px;text-decoration:underline;color:inherit}
+@media print{.no-print{display:none!important}}
+
+/* ===== Cartes photo : « Luxe doré » et « Minimaliste scandinave » ===== */
+.pcard{position:relative;width:100%;max-width:440px;margin:0 auto;aspect-ratio:3/4;border-radius:28px;box-shadow:0 30px 40px -12px rgba(0,0,0,.5);color:#fff5ea;text-align:center;isolation:isolate}
+.pcard .pc-bg{position:absolute;inset:0;border-radius:inherit;overflow:hidden;z-index:-1;background:radial-gradient(circle at 30% 20%,#5a4127,#1a120b 75%)}
+.pcard .pc-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,0,0,.45),rgba(0,0,0,.65))}
+.pcard .pc-in{display:flex;flex-direction:column;justify-content:space-between;gap:.45rem;min-height:100%;padding:1.5rem 1.4rem 1.2rem}
+.pcard .pc-names{font-family:'Playfair Display',Georgia,serif;font-size:clamp(1.7rem,7vw,2.4rem);font-weight:600;margin:.3rem 0;line-height:1.1;text-shadow:0 2px 10px rgba(0,0,0,.5);color:#fff}
+.pcard .pc-addr{border-radius:20px;padding:.8rem 1rem;text-align:left;font-size:.75rem;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);background:rgba(0,0,0,.5)}
+.pcard .pc-a{display:flex;gap:12px;align-items:flex-start;line-height:1.35}
+.pcard .pc-a+.pc-a{margin-top:.7rem}
+.pcard .pc-a .ic{width:24px;flex-shrink:0;text-align:center}
+.pcard .pc-a small{display:block;font-size:.68rem;margin-top:3px}
+.pcard .pc-qr{display:flex;align-items:center;gap:12px;justify-content:center;text-align:left;font-size:.72rem;background:rgba(0,0,0,.5);border-radius:18px;padding:.6rem .8rem;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.pcard .pc-qr .qr{background:#fff;padding:5px;border-radius:10px;width:84px;height:84px;flex-shrink:0}
+.pcard .pc-qr .qr img,.pcard .pc-qr .qr canvas{width:74px!important;height:74px!important}
+@keyframes pcBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes pcPulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes pcGlow{0%,100%{box-shadow:0 0 5px rgba(221,184,130,.3)}50%{box-shadow:0 0 15px rgba(221,184,130,.6)}}
+/* Luxe doré / Art déco */
+.pcard.luxe .pc-top{font-size:1.2rem;letter-spacing:4px;opacity:.85}.pcard.luxe .pc-top span{display:inline-block;animation:pcBounce 1s ease infinite}
+.pcard.luxe .pc-badge{font-family:'Montserrat',sans-serif;font-size:.68rem;letter-spacing:3px;background:rgba(221,184,130,.25);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);width:fit-content;margin:.2rem auto;padding:.4rem 1rem;border-radius:40px;border:1px solid rgba(221,184,130,.6);text-transform:uppercase}
+.pcard.luxe .pc-dear{font-family:'Allura',cursive;font-size:1.5rem;color:#fffdf0;text-transform:none}
+.pcard.luxe .pc-thanks{font-family:'Cormorant Garamond',serif;font-size:1rem;font-style:italic;border-top:1px solid rgba(255,245,220,.4);border-bottom:1px solid rgba(255,245,220,.4);padding:.5rem 0;width:90%;margin:0 auto}
+.pcard.luxe .pc-count{background:rgba(221,184,130,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:50px;padding:.4rem .9rem;font-size:.72rem;font-family:'Montserrat',sans-serif;margin:0 auto;width:fit-content;border:1px solid rgba(221,184,130,.5);animation:pcGlow 2s ease infinite}
+.pcard.luxe .pc-a b{color:#f3cd97;letter-spacing:1px;font-size:.7rem}.pcard.luxe .pc-a small{color:#f3cd97}
+.pcard.luxe .pc-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:.4rem;font-size:.62rem;font-family:'Montserrat',sans-serif;background:rgba(0,0,0,.5);padding:.45rem .8rem;border-radius:30px}
+.pcard.luxe .pc-sp{display:inline-block;animation:pcPulse 1.5s ease infinite}
+.pcard.luxe .pc-vibe{background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-radius:30px;padding:.45rem;font-size:.68rem;font-family:'Montserrat',sans-serif;letter-spacing:1px}
+/* Minimaliste scandinave */
+.pcard.scandinave{border-radius:32px;color:#fff}
+.pcard.scandinave .pc-bg::after{background:linear-gradient(135deg,rgba(0,0,0,.6),rgba(0,0,0,.5))}
+.pcard.scandinave .pc-in{justify-content:center;padding:2rem 1.6rem}
+.pcard.scandinave .pc-tag{font-family:'Montserrat',sans-serif;font-size:.68rem;letter-spacing:4px;font-weight:600;color:#e8d5b8;text-transform:uppercase;background:rgba(0,0,0,.4);border-radius:32px;padding:.8rem 1rem;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.pcard.scandinave .pc-names{background:rgba(0,0,0,.4);border-radius:32px;padding:.8rem 1rem;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);margin:.2rem 0}
+.pcard.scandinave .pc-dear{font-family:'Dancing Script',cursive;font-size:1.2rem;color:#f0dbc0;background:rgba(0,0,0,.4);padding:.3rem 1rem;border-radius:40px;width:fit-content;margin:0 auto}
+.pcard.scandinave .pc-thanks{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-style:italic;color:#f5e6d3;background:rgba(0,0,0,.35);padding:.5rem .8rem;border-radius:50px}
+.pcard.scandinave .pc-addr{border-radius:28px;color:#f5e6d3;font-size:.85rem}
+.pcard.scandinave .pc-a{border-bottom:1px dashed rgba(232,213,184,.3);padding-bottom:.5rem}.pcard.scandinave .pc-a:last-child{border-bottom:none;padding-bottom:0}
+.pcard.scandinave .pc-a b{color:#e8d5b8;font-size:.72rem;letter-spacing:1px}.pcard.scandinave .pc-a small{color:#c9a05b;font-family:'Dancing Script',cursive;font-size:.85rem}
+.pcard.scandinave .pc-hor{font-family:'Montserrat',sans-serif;font-size:.7rem;background:rgba(0,0,0,.5);width:fit-content;margin:0 auto;padding:.5rem 1.2rem;border-radius:40px;color:#f0dbc0}
+.pcard.scandinave .pc-pers{padding:.6rem;background:rgba(0,0,0,.45);border-radius:40px;font-size:.72rem;color:#f0dbc0;border:1px solid rgba(232,213,184,.3)}
+@media (max-width:420px){.pcard .pc-in{padding:1.2rem 1rem 1rem}.pcard.scandinave .pc-in{padding:1.4rem 1.1rem}.pcard .pc-qr .qr{width:72px;height:72px}.pcard .pc-qr .qr img,.pcard .pc-qr .qr canvas{width:62px!important;height:62px!important}}
+@media (prefers-reduced-motion:reduce){.pcard *{animation:none!important}}
+.bot-card .pcard{max-width:340px}

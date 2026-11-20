@@ -41,11 +41,12 @@ body.siteB{background:var(--ivory);color:var(--charcoal);font-family:'Montserrat
 .siteB .foot{background:var(--midnight);color:#fff;text-align:center;padding:4rem 16px 2rem}
 .siteB .fname{font-family:'Dancing Script',cursive;font-size:2.6rem}
 .siteB .socials{display:flex;gap:16px;justify-content:center;margin:16px 0}.siteB .socials a{color:var(--rosegold)}
+.hero{isolation:isolate;overflow:hidden}.hero .hero-img{z-index:-1}
 </style>
 {% endblock %}
 {% block bodyclass %}siteB{% endblock %}
 {% block main %}
-<header class="hero" style="{% if event.cover_image %}background-image:url('{{ event.cover_image.url }}'){% endif %}">
+<header class="hero">{% cover_img event "cover_image" "fimg hero-img" %}
   <div>{% if event.subtitle|tr:lang %}<small>{{ event.subtitle|tr:lang }}</small>{% endif %}<h1>{{ event.title|tr:lang }}</h1><div class="div"></div>{% if event.date %}<div class="dt">{{ event.date|date:"j F Y" }}</div>{% endif %}<a class="cta" href="{% url 'rsvp' event.slug %}?lang={{ lang }}">{% translate "Répondre à l’invitation" %}</a></div>
 </header>
 {% include "events/partials/site_sections.html" %}

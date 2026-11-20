@@ -32,6 +32,7 @@ body.c-grow .c-ring{width:64px;height:64px;background:rgba(201,166,107,.15)}
 .c-hero{position:relative;height:100vh;min-height:520px;overflow:hidden;background:var(--dark)}
 .c-slide{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,#6e1f2a,#1a120b 70%) center/cover no-repeat;opacity:0;transform:scale(1.08);transition:opacity 1.6s ease,transform 8s ease}
 .c-slide.on{opacity:1;transform:scale(1)}
+.c-slide{overflow:hidden}
 .c-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,14,8,.55) 0%,rgba(20,14,8,.25) 40%,rgba(20,14,8,.7) 100%)}
 .c-cap{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:90px 16px 40px;color:#fff}
 .c-cap h1{font-family:'Allura',cursive;font-weight:400;font-size:clamp(4rem,11vw,7rem);line-height:1;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.4);margin:0 0 1.2rem;animation:fadeUp 1.4s ease both}
@@ -142,8 +143,8 @@ body.siteC::before{content:'';position:fixed;inset:0;pointer-events:none;z-index
 {% endblock %}
 {% block main %}
 <header class="c-hero" id="home">
-  <div class="c-slide on" {% if event.cover_image %}style="background-image:url('{{ event.cover_image.url }}')"{% endif %}></div>
-  {% if event.cover_image_2 %}<div class="c-slide" style="background-image:url('{{ event.cover_image_2.url }}')"></div>{% endif %}
+  <div class="c-slide on">{% cover_img event "cover_image" "fimg" %}</div>
+  {% if event.cover_image_2 %}<div class="c-slide">{% cover_img event "cover_image_2" "fimg" %}</div>{% endif %}
   <div class="c-cap">
     <h1 translate="no">{{ event.title|tr:lang }}</h1>
     <div class="c-band">{% if event.subtitle|tr:lang %}{{ event.subtitle|tr:lang }}{% else %}{% translate "Nous nous marions" %}{% endif %}</div>

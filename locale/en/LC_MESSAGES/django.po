@@ -157,11 +157,44 @@ msgstr "Turn on location to see yourself on the map."
 msgid "Position mise à jour moins souvent pour économiser la batterie"
 msgstr "Location updated less often to save battery"
 
+msgid "✧ AVEC TOUT NOTRE AMOUR ✧"
+msgstr "✧ WITH ALL OUR LOVE ✧"
+
 msgid "Cher·e"
 msgstr "Dear"
 
-msgid "Scannez pour le mur des vœux et vos photos"
-msgstr "Scan for the wish wall and your photos"
+msgid "Avec joie, nous célébrons votre présence à nos côtés ! 🥂"
+msgstr "We are overjoyed to celebrate with you by our side! 🥂"
+
+msgid "C'est aujourd'hui !"
+msgstr "It's today!"
+
+msgid "Le grand jour approche !"
+msgstr "The big day is coming!"
+
+msgid "lieux de fête"
+msgstr "party venues"
+
+msgid "Lieu unique · Magie garantie ✨"
+msgstr "One venue · Magic guaranteed ✨"
+
+msgid "CARTE D'INVITATION AU MARIAGE"
+msgstr "WEDDING INVITATION"
+
+msgid "CARTE D'INVITATION"
+msgstr "INVITATION"
+
+msgid "Un grand merci pour votre réponse positive"
+msgstr "Thank you so much for saying yes"
+
+msgid "Lieu unique · Célébration"
+msgstr "One venue · Celebration"
+
+msgid "Ouvrir le mur des vœux"
+msgstr "Open the wish wall"
+
+msgid "Scannez ou touchez le QR code : mur des vœux et vos photos"
+msgstr "Scan or tap the QR code: wish wall and your photos"
 
 msgid "Plus que…"
 msgstr "Only…"

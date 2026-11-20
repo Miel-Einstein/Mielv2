@@ -84,11 +84,10 @@ def _photo_data(event, max_side=640):
     if not event.cover_image:
         return None
     try:
-        from PIL import Image
+        from events.models import focus_of
+        from events.services.images import focus_crop
         with event.cover_image.open("rb") as f:
-            im = Image.open(f)
-            im = im.convert("RGB")
-            im.thumbnail((max_side, max_side))
+            im = focus_crop(f, 220 / 297, focus_of(event, "cover_image"), max_side)  # même cadrage qu'à l'écran
             buf = BytesIO()
             im.save(buf, "JPEG", quality=82)
         return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()

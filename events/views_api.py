@@ -16,7 +16,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from events import serializers as S
-from events.models import (AlerterItem, BotSession, Category, Child, Companion, Contact, DeliveryOption, Event, Gift,
+from events.models import (CARD_TEMPLATES, AlerterItem, BotSession, Category, Child, Companion, Contact, DeliveryOption, Event, Gift,
                            GalleryImage, GiftReservation, Guest, Moment, Reaction, Role, StoryStep, Table, Venue, Visitor, Wish, t)
 from events.services import alerter, notify, seating
 from events.services.defaults import CATEGORY_COLORS, reset_alerter
@@ -108,7 +108,7 @@ def my_theme(request):
 EVENT_FIELDS = {"type", "title", "subtitle", "date", "time", "timezone", "languages", "services", "card_template",
                 "site_template", "kids_invited", "kids_table", "age_with_parents", "age_kids_max", "baby_chair",
                 "supervisor_name", "max_companions", "ask_languages", "conversation_languages", "budget", "currency",
-                "guest_target", "song", "telegram_chat_id", "social_links", "couple", "site_bg", "plan_header"}
+                "guest_target", "song", "telegram_chat_id", "social_links", "couple", "site_bg", "plan_header", "card_message", "card_theme", "cover_focus"}
 
 
 @require_http_methods(["GET", "PATCH", "POST"])
@@ -160,6 +160,21 @@ def event_detail(request, event):
                 return err("Budget invalide")
         elif k in ("title", "subtitle"):
             setattr(event, k, as_lang_dict(v, data.get("languages", event.languages)))
+        elif k in ("card_message", "card_theme"):
+            setattr(event, k, {l: str(x)[:160] for l, x in (as_lang_dict(v, event.languages) or {}).items() if x})
+        elif k == "card_template":
+            if v not in dict(CARD_TEMPLATES):
+                return err("Modèle de carte inconnu")
+            event.card_template = v
+        elif k == "cover_focus":
+            if not isinstance(v, dict):
+                return err("Format invalide")
+            num = lambda x, a, b, d: max(a, min(b, float(x))) if isinstance(x, (int, float)) else d
+            focus = dict(event.cover_focus or {})
+            for f in ("cover_image", "cover_image_2"):
+                if isinstance(v.get(f), dict):
+                    focus[f] = {"x": round(num(v[f].get("x"), 0, 100, 50), 2), "y": round(num(v[f].get("y"), 0, 100, 50), 2), "z": round(num(v[f].get("z"), 1, 3, 1), 3)}
+            event.cover_focus = focus
         elif k == "languages":
             langs = [l for l in v if l in ("fr", "en", "it", "ln")]
             if not langs:
@@ -191,6 +206,8 @@ def event_upload(request, event):
     if field not in ("cover_image", "cover_image_2", "partner1_image", "partner2_image", "site_bg_image") or not f:
         return err("Fichier manquant")
     setattr(event, field, f)
+    if field in ("cover_image", "cover_image_2"):
+        event.cover_focus = {k: v for k, v in (event.cover_focus or {}).items() if k != field}  # nouvelle photo : cadrage remis au centre
     event.save()
     return ok({"url": getattr(event, field).url})
 

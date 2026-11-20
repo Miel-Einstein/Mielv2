@@ -71,20 +71,31 @@
         const sync = () => $$('[data-v]', b).forEach(card => { const v = vs[+card.dataset.v]; v.name = readLang('vn' + card.dataset.v, card); $$('[data-f]', card).forEach(i => { v[i.dataset.f] = i.value; }); });
         draw();
       } },
-    { id: 'photos', label: 'Photos', ask: () => "Ajoute une belle photo pour ta carte et ton site (tu pourras la changer plus tard).",
-      ui: b => { b.innerHTML = '<div class="row">' + ['cover_image', 'cover_image_2'].map((f, i) => '<label class="btn">' + (EV[f] ? '✅ ' : '📷 ') + 'Photo ' + (i + 1) + '<input type="file" accept="image/*" hidden data-f="' + f + '"></label>').join('') + '<button class="btn gold" data-a="ok">Continuer</button></div>';
-        $$('[data-f]', b).forEach(inp => inp.onchange = async () => { const fd = new FormData(); fd.append('field', inp.dataset.f); fd.append('file', inp.files[0]); try { const r = await api(BASE + 'upload/', { method: 'POST', form: fd }); EV[inp.dataset.f] = r.url; toast('Photo enregistrée ✦'); render(); } catch (e) { toast(e.message); } });
-        b.querySelector('[data-a=ok]').onclick = () => answer(EV.cover_image ? 'Photo ajoutée' : 'Plus tard'); } },
+    { id: 'photos', label: 'Photos', ask: () => "Ajoute une ou deux belles photos : elles servent à la carte, au carrousel du site et au plan de table. Ensuite, touche <b>✂️ Cadrer</b> pour choisir ce qui reste au centre et zoomer.",
+      ui: b => { const draw = () => { b.innerHTML = '<div class="ph-row">' + ['cover_image', 'cover_image_2'].map((f, i) => '<div class="ph-slot">' + (EV[f] ? '<div class="ph-thumb"><img alt="" src="' + esc(EV[f]) + '" style="' + Miel.focusStyle(Object.assign({ x: 50, y: 50, z: 1 }, (EV.cover_focus || {})[f])) + '"></div>' : '<div class="ph-thumb empty">📷</div>') +
+            '<label class="btn sm">' + (EV[f] ? 'Changer' : 'Photo ' + (i + 1)) + '<input type="file" accept="image/*" hidden data-f="' + f + '"></label>' + (EV[f] ? '<button type="button" class="btn sm gold" data-fr="' + f + '">✂️ Cadrer</button>' : '') + '</div>').join('') + '</div><div class="row center" style="margin-top:12px"><button class="btn gold" data-a="ok">Continuer</button></div>';
+          $$('[data-f]', b).forEach(inp => inp.onchange = async () => { const fd = new FormData(); fd.append('field', inp.dataset.f); fd.append('file', inp.files[0]); try { const r = await api(BASE + 'upload/', { method: 'POST', form: fd }); EV[inp.dataset.f] = r.url; EV.cover_focus = Object.assign({}, EV.cover_focus); delete EV.cover_focus[inp.dataset.f]; dirty = true; toast('Photo enregistrée ✦'); draw(); } catch (e) { toast(e.message); } });
+          $$('[data-fr]', b).forEach(x => x.onclick = () => { const f = x.dataset.fr; Miel.framer(EV[f], (EV.cover_focus || {})[f], async focus => { const r = await api(BASE, { method: 'PATCH', json: { cover_focus: { [f]: focus } } }); EV.cover_focus = r.cover_focus; dirty = true; toast('Cadrage enregistré ✦'); draw(); }); });
+          b.querySelector('[data-a=ok]').onclick = () => answer(EV.cover_image ? 'Photo ajoutée' : 'Plus tard'); };
+        draw(); } },
     { id: 'services', label: 'Services', ask: () => "Quels services veux-tu utiliser ? Tu pourras en ajouter plus tard.",
       ui: b => { const sel = new Set(EV.services); const wed = EV.type === 'mariage';
         b.innerHTML = '<div class="tiles-row">' + SERVICES.map(([id, ic, l, req, wo]) => tile(ic, l + (wo && !wed ? ' (mariages)' : ''), 'data-id="' + id + '"', sel.has(id), req || (wo && !wed))).join('') + '</div><div class="row center" style="margin-top:14px"><button class="btn gold" data-a="ok">Valider</button></div>';
         $$('.opt:not([disabled])', b).forEach(c => c.onclick = () => { sel.has(c.dataset.id) ? sel.delete(c.dataset.id) : sel.add(c.dataset.id); c.classList.toggle('on'); });
         b.querySelector('[data-a=ok]').onclick = () => { const arr = SERVICES.map(s => s[0]).filter(id => sel.has(id) || id === 'carte'); answer(arr.map(id => SERVICES.find(s => s[0] === id)[1]).join(' ') + ' ' + arr.length + ' services', () => patch({ services: arr })); }; } },
-    { id: 'carte', label: "Carte d'invitation", ask: () => "Choisis le modèle de ta carte d'invitation. L'aperçu se met à jour.",
-      ui: b => { b.innerHTML = '<div class="tiles-row">' + [['botanique', '🌿', 'Botanique'], ['moderne', '🖤', 'Moderne'], ['rose', '🌸', 'Rose romantique']].map(([k, ic, l]) => tile(ic, l, 'data-k="' + k + '"', EV.card_template === k)).join('') + '</div><div class="row center" style="margin-top:14px"><button class="btn gold" data-a="ok">Garder ce modèle</button><button class="btn ghost sm" data-a="pv">👁 Voir la carte</button></div>';
-        $$('.opt', b).forEach(c => c.onclick = async () => { await patch({ card_template: c.dataset.k }); $$('.opt', b).forEach(x => x.classList.toggle('on', x === c)); });
-        b.querySelector('[data-a=pv]').onclick = () => togglePreview(true);
-        b.querySelector('[data-a=ok]').onclick = () => answer('Modèle « ' + EV.card_template + ' »'); } },
+    { id: 'carte', label: "Carte d'invitation", ask: () => "Choisis le modèle de ta carte d'invitation. Appuie sur <b>Voir la carte</b> pour l'aperçu.",
+      ui: b => { const PHOTO = ['luxe', 'scandinave'];
+        const draw = () => { b.innerHTML = '<div class="tiles-row">' + [['botanique', '🌿', 'Botanique'], ['moderne', '🖤', 'Moderne'], ['rose', '🌸', 'Rose romantique'], ['luxe', '✨', 'Luxe doré'], ['scandinave', '🤍', 'Minimaliste scandinave']].map(([k, ic, l]) => tile(ic, l, 'data-k="' + k + '"', EV.card_template === k)).join('') + '</div>' +
+            (PHOTO.includes(EV.card_template) ? '<div class="grid" style="gap:8px;margin-top:12px;text-align:left"><div class="hint">Ta photo de couverture remplit toute la carte.' + (EV.cover_image ? ' <button type="button" class="btn sm" data-a="fr">✂️ Cadrer la photo</button>' : ' Ajoute-la à l\'étape « Photos ».') + '</div>' +
+              '<div><b style="font-size:13px">Message de la carte (facultatif)</b>' + langInputs('cm', EV.card_message || {}, 'ex. Avec joie, nous célébrons votre présence à nos côtés ! 🥂') + '</div>' +
+              '<div><b style="font-size:13px">Thème ou dress code (facultatif)</b>' + langInputs('ct', EV.card_theme || {}, 'ex. Thème : blanc et doré') + '</div></div>' : '') +
+            '<div class="row center" style="margin-top:14px"><button class="btn gold" data-a="ok">Garder ce modèle</button><button class="btn ghost sm" data-a="pv">👁 Voir la carte</button></div>';
+          $$('.opt', b).forEach(c => c.onclick = async () => { await patch({ card_template: c.dataset.k }); draw(); });
+          const fr = b.querySelector('[data-a=fr]'); if (fr) fr.onclick = () => Miel.framer(EV.cover_image, (EV.cover_focus || {}).cover_image, async focus => { const r = await api(BASE, { method: 'PATCH', json: { cover_focus: { cover_image: focus } } }); EV.cover_focus = r.cover_focus; dirty = true; toast('Cadrage enregistré ✦'); });
+          const saveTexts = async () => { if (PHOTO.includes(EV.card_template)) await patch({ card_message: readLang('cm', b), card_theme: readLang('ct', b) }); };
+          b.querySelector('[data-a=pv]').onclick = async () => { await saveTexts(); togglePreview(true); };
+          b.querySelector('[data-a=ok]').onclick = async () => { await saveTexts(); answer('Modèle « ' + ({ botanique: 'Botanique', moderne: 'Moderne', rose: 'Rose romantique', luxe: 'Luxe doré', scandinave: 'Minimaliste scandinave' })[EV.card_template] + ' »'); }; };
+        draw(); } },
     { id: 'categories', label: "Catégories d'invités", ask: () => "Voici les <b>catégories d'invités</b>. Chaque invité en choisira <b>une seule</b> dans le RSVP. L'ordre sert de priorité pour le plan de table, et 👑 réserve la catégorie à la table d'honneur (elle n'apparaît pas dans le RSVP).",
       ui: b => { let cats = JSON.parse(JSON.stringify(EV.categories));
         const draw = () => { b.innerHTML = '<div class="list-edit">' + cats.map((c, i) => '<div class="it" style="flex-wrap:wrap" data-c="' + i + '"><span style="width:10px;height:10px;border-radius:50%;background:' + c.color + ';flex-shrink:0"></span><div style="flex:1 1 220px">' + langInputs('cat' + i, c.name, 'Catégorie') + '</div><button class="icon-btn ' + (c.is_honor ? 'on' : '') + '" data-h="' + i + '" title="Table d\'honneur">👑</button><button class="icon-btn" data-u="' + i + '" title="Monter">▲</button><button class="icon-btn" data-x="' + i + '" title="Retirer">✕</button></div>').join('') + '</div><div class="row" style="margin-top:8px"><button class="btn sm" data-a="add">+ Ajouter une catégorie</button><button class="btn gold" data-a="ok">Valider</button></div>';
@@ -259,14 +270,16 @@
     card.classList.add('swap');
     setTimeout(() => { draw(); card.classList.remove('swap'); card.scrollTop = 0; }, 160);
   }
-  function preview() {
+  async function preview() {
     const pv = $('#pvCol'); if (!pv) return;
     const l = pv.dataset.lang || L1();
-    const title = tr(EV.title, l), mono = title.split(/[&\s]+/).filter(Boolean).map(w => w[0]).slice(0, 2).join(' & ');
-    pv.innerHTML = '<div class="row center" style="margin-bottom:12px">' + EV.languages.map(k => tile(LANGS[k][0], LANGS[k][1], 'data-pl="' + k + '"', l === k)).join('') + '</div>' +
-      '<div class="icard ' + EV.card_template + '"><div class="ph" ' + (EV.cover_image ? 'style="background:url(\'' + esc(EV.cover_image) + '\') center/cover"' : '') + '>' + (EV.cover_image ? '' : '<div class="mono">' + esc(mono) + '</div>') + (tr(EV.subtitle, l) ? '<div class="badge">♥ ' + esc(tr(EV.subtitle, l)) + '</div>' : '') + '</div><div class="bd"><div class="names">' + esc(title) + '</div><div class="dear">Marie Dupont</div><div style="font-size:13px">' + (EV.date ? new Date(EV.date + 'T12:00').toLocaleDateString(l === 'ln' ? 'fr-FR' : l, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '') + '</div><div class="evs">' + EV.venues.map(v => '<div><b>' + esc(v.start) + '</b> · ' + esc(tr(v.name, l)) + '</div>').join('') + '</div><div class="qrrow"><div class="qr" data-qr="' + esc(EV.urls.wall) + '"></div><div>QR code personnel vers le mur des vœux</div></div></div></div>';
+    pv.innerHTML = '<div class="row center" style="margin-bottom:12px">' + EV.languages.map(k => tile(LANGS[k][0], LANGS[k][1], 'data-pl="' + k + '"', l === k)).join('') + '</div><div id="pvCard" class="muted" style="text-align:center">…</div>';
     $$('[data-pl]', pv).forEach(b => b.onclick = () => { pv.dataset.lang = b.dataset.pl; preview(); });
-    Miel.renderQRs(pv);
+    try {
+      const r = await fetch('/app/e/' + EV.slug + '/carte-apercu/?lang=' + l + '&v=' + Date.now(), { credentials: 'same-origin' });
+      const box = $('#pvCard', pv); if (!box) return;
+      box.className = ''; box.innerHTML = await r.text(); Miel.renderQRs(box);
+    } catch (e) { toast(e.message); }
   }
 
   async function init() {

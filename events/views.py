@@ -221,6 +221,20 @@ def card(request, slug, token):
         "wall_url": event.public_url("wall") + f"?g={guest.token}"})
 
 
+@login_required
+def card_preview(request, slug):
+    """Aperçu de la carte pour l'assistant (invité fictif « Marie Dupont »)."""
+    event = owned(request, slug)
+    lang = request.GET.get("lang") if request.GET.get("lang") in event.languages else event.languages[0]
+    title = event.title_in(lang)
+    sample = type("Sample", (), {"first_name": "Marie", "full_name": "Marie Dupont"})()
+    with translation.override(lang):
+        return render(request, "events/partials/card.html", {
+            "event": event, "lang": lang, "guest": sample, "venues": event.venues.all(), "song": S.song_data(event.song),
+            "monogram": " & ".join(w[0] for w in title.replace("&", " ").split()[:2]) if title else "",
+            "wall_url": event.public_url("wall")})
+
+
 def card_pdf(request, slug, token):
     event = get_object_or_404(Event, slug=slug)
     guest = get_object_or_404(event.guests, token=token)

@@ -17,6 +17,7 @@ urlpatterns = [
     path("app/e/<slug:slug>/cadeaux/", views.gifts_manager, name="gifts_manager"),
     path("app/e/<slug:slug>/plan.pdf", views.plan_pdf, name="plan_pdf"),
     path("app/e/<slug:slug>/plan.svg", views.plan_svg, name="plan_svg"),
+    path("app/e/<slug:slug>/carte-apercu/", views.card_preview, name="card_preview"),
     # invités
     path("i/<str:token>/", views.share_link, name="share_link"),
     path("e/<slug:slug>/", views.event_home, name="event_home"),

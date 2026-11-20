@@ -1,5 +1,37 @@
-{% load i18n miel %}<div class="icard {{ event.card_template }}">
-  <div class="ph"{% if event.cover_image %} style="background:url('{{ event.cover_image.url }}') center/cover"{% endif %}>
+{% load i18n miel %}{% if event.card_template == "luxe" or event.card_template == "scandinave" %}
+{# Cartes « photo » : la photo de couverture remplit toute la carte, le texte est posé dessus sur du verre sombre. #}
+{% with message=event.card_message|tr:lang theme=event.card_theme|tr:lang subtitle=event.subtitle|tr:lang n=venues|length days=event.date|days_until %}
+<div class="pcard {{ event.card_template }}">
+  <div class="pc-bg">{% cover_img event "cover_image" "fimg" %}</div>
+  <div class="pc-in">
+  {% if event.card_template == "luxe" %}
+    <div class="pc-top" aria-hidden="true"><span>✨ 🎉 ✨</span></div>
+    <h2 class="pc-names">{{ event.title|tr:lang }}</h2>
+    <div class="pc-badge">♥ {% if subtitle %}{{ subtitle }}{% else %}{% translate "✧ AVEC TOUT NOTRE AMOUR ✧" %}{% endif %} ♥</div>
+    {% if guest %}<div class="pc-dear">{% translate "Cher·e" %} {{ guest.full_name }}</div>{% endif %}
+    <div class="pc-thanks">✓ {% if message %}{{ message }}{% else %}{% translate "Avec joie, nous célébrons votre présence à nos côtés ! 🥂" %}{% endif %} ✓</div>
+    {% if days is not None %}<div class="pc-count">⏳ <b>{% if days == 0 %}{% translate "C'est aujourd'hui !" %}{% else %}J-{{ days }}{% endif %}</b> · ✨ {% translate "Le grand jour approche !" %} ✨</div>{% endif %}
+    {% if venues %}<div class="pc-addr">{% for v in venues %}<div class="pc-a"><span class="ic" aria-hidden="true">{% if forloop.last and n > 1 %}🥂{% else %}🏛️{% endif %}</span><div><b>{{ v.name|tr:lang|upper }}</b>{% if v.address %}<br>{{ v.address }}{% endif %}<small>📅 {{ event.date|date:"j F Y" }}{% if v.start %} · {{ v.start|time:"H:i" }}{% if v.end %} – {{ v.end|time:"H:i" }}{% endif %}{% endif %}</small></div></div>{% endfor %}</div>{% endif %}
+    <div class="pc-foot"><span>{% if n > 1 %}📍 🎉 {{ n }} {% translate "lieux de fête" %} 🎉{% else %}📌 {% translate "Lieu unique · Magie garantie ✨" %}{% endif %}</span>{% if event.date %}<span>📅 {{ event.date|date:"j F Y" }}</span>{% endif %}<span class="pc-sp" aria-hidden="true">🎈 🍾 💒 🎊</span></div>
+    {% if theme %}<div class="pc-vibe">🥂 {{ theme }} 🥂</div>{% endif %}
+  {% else %}
+    <div class="pc-tag">{% if subtitle %}{{ subtitle }}{% elif event.type == "mariage" %}{% translate "CARTE D'INVITATION AU MARIAGE" %}{% else %}{% translate "CARTE D'INVITATION" %}{% endif %}</div>
+    <h2 class="pc-names">{{ event.title|tr:lang }}</h2>
+    {% if guest %}<div class="pc-dear">{% translate "Cher·e" %} {{ guest.full_name }}</div>{% endif %}
+    <div class="pc-thanks">✓ {% if message %}{{ message }}{% else %}{% translate "Un grand merci pour votre réponse positive" %}{% endif %}</div>
+    {% if venues %}<div class="pc-addr">{% for v in venues %}<div class="pc-a"><span class="ic" aria-hidden="true">{% if forloop.last and n > 1 %}🍷{% else %}🌿{% endif %}</span><div><b>{{ v.name|tr:lang }}</b>{% if v.address %}<br>{{ v.address }}{% endif %}<small>📅 {{ event.date|date:"j F Y" }}{% if v.start %} · {{ v.start|time:"H:i" }}{% if v.end %} – {{ v.end|time:"H:i" }}{% endif %}{% endif %}</small></div></div>{% endfor %}</div>{% endif %}
+    <div class="pc-hor">📅 {% if n > 1 %}{% blocktranslate %}Événement en {{ n }} lieux différents{% endblocktranslate %}{% else %}{% translate "Lieu unique · Célébration" %}{% endif %}</div>
+    {% if guest %}<div class="pc-pers">♥ {% blocktranslate with name=guest.first_name %}Nous avons hâte de célébrer ce jour spécial avec vous, {{ name }} ! ✨{% endblocktranslate %}</div>{% endif %}
+    {% if theme %}<div class="pc-pers">🥂 {{ theme }} 🥂</div>{% endif %}
+  {% endif %}
+    {% if guest %}<div class="pc-qr"><a class="qr" href="{{ wall_url }}" data-qr="{{ wall_url }}" aria-label="{% translate 'Ouvrir le mur des vœux' %}"></a><div>{% translate "Scannez ou touchez le QR code : mur des vœux et vos photos" %}{% if song %}<br><b>♪ {{ song.title }}</b>{% endif %}<a class="pc-open no-print" href="{{ wall_url }}">💬 {% translate "Ouvrir le mur des vœux" %}</a></div></div>{% endif %}
+  </div>
+</div>
+{% endwith %}
+{% else %}
+<div class="icard {{ event.card_template }}">
+  <div class="ph">
+    {% cover_img event "cover_image" "fimg" %}
     {% if not event.cover_image %}<div class="mono">{{ monogram }}</div>{% endif %}
     {% if event.subtitle|tr:lang %}<div class="badge">♥ {{ event.subtitle|tr:lang }}</div>{% endif %}
   </div>
@@ -8,6 +40,7 @@
     {% if guest %}<div class="dear">{% translate "Cher·e" %} {{ guest.full_name }}</div>{% endif %}
     {% if event.date %}<div style="font-size:13px">{{ event.date|date:"l j F Y" }}</div>{% endif %}
     {% if venues %}<div class="evs">{% for v in venues %}<div><b>{{ v.start|time:"H:i" }}</b> · {{ v.name|tr:lang }}{% if v.address %} — {{ v.address }}{% endif %}</div>{% endfor %}</div>{% endif %}
-    {% if guest %}<div class="qrrow"><div class="qr" data-qr="{{ wall_url }}"></div><div>{% translate "Scannez pour le mur des vœux et vos photos" %}{% if song %}<br><b>♪ {{ song.title }}</b>{% endif %}</div></div>{% endif %}
+    {% if guest %}<div class="qrrow"><a class="qr" href="{{ wall_url }}" data-qr="{{ wall_url }}" aria-label="{% translate 'Ouvrir le mur des vœux' %}"></a><div>{% translate "Scannez ou touchez le QR code : mur des vœux et vos photos" %}{% if song %}<br><b>♪ {{ song.title }}</b>{% endif %}<a class="pc-open no-print" href="{{ wall_url }}">💬 {% translate "Ouvrir le mur des vœux" %}</a></div></div>{% endif %}
   </div>
 </div>
+{% endif %}

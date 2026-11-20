@@ -48,7 +48,7 @@ SERVICE_CHOICES = [
     ("moments", "Moments forts"),
     ("site", "Site du mariage"),
 ]
-CARD_TEMPLATES = [("botanique", "Botanique"), ("moderne", "Moderne"), ("rose", "Rose romantique")]
+CARD_TEMPLATES = [("botanique", "Botanique"), ("moderne", "Moderne"), ("rose", "Rose romantique"), ("luxe", "Luxe doré"), ("scandinave", "Minimaliste scandinave")]
 SITE_TEMPLATES = [("A", "Botanical Editorial"), ("B", "Modern Romance"), ("C", "Luxe Romantique")]
 
 
@@ -86,6 +86,11 @@ class Event(models.Model):
     site_template = models.CharField(max_length=2, choices=SITE_TEMPLATES, default="A")
     cover_image = models.ImageField(upload_to="events/covers/", blank=True)
     cover_image_2 = models.ImageField(upload_to="events/covers/", blank=True)
+    # Cadrage des photos de couverture : {"cover_image": {"x": 0-100, "y": 0-100, "z": 1-3}, "cover_image_2": {...}}
+    cover_focus = models.JSONField(default=dict, blank=True)
+    # Textes facultatifs des cartes « photo » (Luxe doré, Minimaliste) : {lang: texte}
+    card_message = models.JSONField(default=dict, blank=True)
+    card_theme = models.JSONField(default=dict, blank=True)
     # Section « Les mariés » (modèle C) : {"p1": {"name": "", "text": {lang: ...}}, "p2": {...}}
     couple = models.JSONField(default=dict, blank=True)
     # Fond des pages du site : {"mode": default|color|gradient|image, "c1", "c2", "veil": 0-85, "tone": light|dark, "scope": site|all}
@@ -210,6 +215,13 @@ class GalleryImage(models.Model):
 
     class Meta:
         ordering = ["order", "id"]
+
+
+def focus_of(event, field):
+    """Cadrage d'une photo de couverture, borné : x et y en %, zoom de 1 à 3."""
+    f = (event.cover_focus or {}).get(field) or {}
+    clamp = lambda v, a, b, d: max(a, min(b, float(v))) if isinstance(v, (int, float)) else d
+    return {"x": clamp(f.get("x"), 0, 100, 50), "y": clamp(f.get("y"), 0, 100, 50), "z": clamp(f.get("z"), 1, 3, 1)}
 
 
 class Category(models.Model):

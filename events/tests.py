@@ -317,3 +317,42 @@ class ThemeTests(TestCase):
         self.client.logout()
         self.assertContains(self.client.get(f"/e/{ev.slug}/rsvp/"), 'data-theme="ivoire"')  # invités : palette de l'organisateur
         self.assertNotContains(self.client.get("/connexion/"), "data-theme")
+
+
+class CardTemplatesTests(TestCase):
+    def setUp(self):
+        from io import BytesIO
+        from django.core.files.base import ContentFile
+        from PIL import Image
+        self.u = User.objects.create_user("k", "k@x.co", "pw-12345678")
+        self.ev = Event.objects.create(owner=self.u, type="mariage", title={"fr": "Awa & Daniel", "en": "Awa & Daniel"}, languages=["fr", "en"], services=["carte", "mur"],
+                                       date=timezone.localdate() + timedelta(days=10), card_message={"fr": "Merci d'être là"})
+        b = BytesIO(); Image.new("RGB", (1200, 600), (120, 40, 40)).save(b, "JPEG")
+        self.ev.cover_image.save("c.jpg", ContentFile(b.getvalue()))
+        self.g = Guest.objects.create(event=self.ev, first_name="Marie", last_name="Dupont", attending=True)
+
+    def test_photo_cards_render_with_clickable_qr_and_pdf(self):
+        for tpl in ("luxe", "scandinave", "botanique"):
+            self.ev.card_template = tpl
+            self.ev.save()
+            r = self.client.get(f"/e/{self.ev.slug}/carte/{self.g.token}/?lang=fr")
+            self.assertContains(r, f'<a class="qr" href="')
+            self.assertContains(r, f"?g={self.g.token}")
+            self.assertContains(r, 'class="fimg"')
+            pdf = b"".join(self.client.get(f"/e/{self.ev.slug}/carte/{self.g.token}/pdf/").streaming_content)
+            self.assertTrue(pdf.startswith(b"%PDF"))
+            self.assertIn(b"/URI", pdf)  # le QR code du PDF est un lien
+        self.ev.card_template = "luxe"
+        self.ev.save()
+        self.assertContains(self.client.get(f"/e/{self.ev.slug}/carte/{self.g.token}/?lang=fr"), "J-10")
+
+    def test_focus_api_and_crop(self):
+        from events.services.images import focus_crop
+        self.client.force_login(self.u)
+        r = self.client.patch(f"/api/e/{self.ev.slug}/", data=json.dumps({"cover_focus": {"cover_image": {"x": 150, "y": 20, "z": 9}}, "card_template": "luxe"}), content_type="application/json")
+        self.assertEqual(r.json()["cover_focus"]["cover_image"], {"x": 100.0, "y": 20.0, "z": 3.0})
+        self.assertEqual(self.client.patch(f"/api/e/{self.ev.slug}/", data='{"card_template": "zzz"}', content_type="application/json").status_code, 400)
+        with self.ev.cover_image.open("rb") as f:
+            im = focus_crop(f, 3 / 4, {"x": 100, "y": 50, "z": 2})
+        self.assertAlmostEqual(im.size[0] / im.size[1], 0.75, places=2)
+        self.assertEqual(self.client.get(f"/app/e/{self.ev.slug}/carte-apercu/?lang=en").status_code, 200)

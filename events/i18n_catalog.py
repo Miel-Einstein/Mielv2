@@ -7,6 +7,12 @@ Pour compléter le lingala : ajouter les paires dans CATALOG["ln"], puis
 """
 
 EN = {
+    "✧ AVEC TOUT NOTRE AMOUR ✧": "✧ WITH ALL OUR LOVE ✧", "Avec joie, nous célébrons votre présence à nos côtés ! 🥂": "We are overjoyed to celebrate with you by our side! 🥂",
+    "C'est aujourd'hui !": "It's today!", "Le grand jour approche !": "The big day is coming!", "lieux de fête": "party venues", "Lieu unique · Magie garantie ✨": "One venue · Magic guaranteed ✨",
+    "CARTE D'INVITATION AU MARIAGE": "WEDDING INVITATION", "CARTE D'INVITATION": "INVITATION", "Un grand merci pour votre réponse positive": "Thank you so much for saying yes",
+    "Événement en %(n)s lieux différents": "Event in %(n)s different venues", "Lieu unique · Célébration": "One venue · Celebration",
+    "Nous avons hâte de célébrer ce jour spécial avec vous, %(name)s ! ✨": "We can't wait to celebrate this special day with you, %(name)s! ✨",
+    "Ouvrir le mur des vœux": "Open the wish wall", "Scannez ou touchez le QR code : mur des vœux et vos photos": "Scan or tap the QR code: wish wall and your photos",
     "Les mariés": "The couple", "Galerie": "Gallery", "Nos photos": "Our photos", "Merci d’être à nos côtés": "Thank you for being with us", "Retour en haut": "Back to top", "Défiler": "Scroll down", "Nous nous marions": "We're getting married",
 
     "Langue": "Language", "Annuler": "Undo", "Préparez-vous…": "Get ready…", "Bonjour": "Hello",
@@ -50,6 +56,12 @@ EN = {
 }
 
 IT = {
+    "✧ AVEC TOUT NOTRE AMOUR ✧": "✧ CON TUTTO IL NOSTRO AMORE ✧", "Avec joie, nous célébrons votre présence à nos côtés ! 🥂": "Con gioia festeggiamo la vostra presenza al nostro fianco! 🥂",
+    "C'est aujourd'hui !": "È oggi!", "Le grand jour approche !": "Il grande giorno si avvicina!", "lieux de fête": "luoghi di festa", "Lieu unique · Magie garantie ✨": "Un solo luogo · Magia garantita ✨",
+    "CARTE D'INVITATION AU MARIAGE": "PARTECIPAZIONE DI NOZZE", "CARTE D'INVITATION": "INVITO", "Un grand merci pour votre réponse positive": "Grazie di cuore per aver accettato",
+    "Événement en %(n)s lieux différents": "Evento in %(n)s luoghi diversi", "Lieu unique · Célébration": "Un solo luogo · Celebrazione",
+    "Nous avons hâte de célébrer ce jour spécial avec vous, %(name)s ! ✨": "Non vediamo l'ora di festeggiare questo giorno speciale con te, %(name)s! ✨",
+    "Ouvrir le mur des vœux": "Apri il muro degli auguri", "Scannez ou touchez le QR code : mur des vœux et vos photos": "Scansiona o tocca il QR code: muro degli auguri e le tue foto",
     "Les mariés": "Gli sposi", "Galerie": "Galleria", "Nos photos": "Le nostre foto", "Merci d’être à nos côtés": "Grazie di essere con noi", "Retour en haut": "Torna su", "Défiler": "Scorri", "Nous nous marions": "Ci sposiamo",
 
     "Langue": "Lingua", "Annuler": "Annulla", "Préparez-vous…": "Preparatevi…", "Bonjour": "Ciao",

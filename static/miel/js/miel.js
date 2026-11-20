@@ -49,6 +49,46 @@
   M.openGlass = html => { const bg = layer('glassBg', 'glass'); bg.firstChild.innerHTML = html; bg.classList.add('open'); return bg.firstChild; };
   M.closeGlass = () => { const bg = document.getElementById('glassBg'); bg && bg.classList.remove('open'); };
 
+  // ---------- Recadrage d'une photo : point de cadrage (x, y en %) + zoom (1 à 3)
+  // Même calcul que le serveur (object-fit: cover + object-position + zoom autour du point).
+  M.focusStyle = f => 'object-position:' + f.x + '% ' + f.y + '%;transform-origin:' + f.x + '% ' + f.y + '%;transform:scale(' + f.z + ')';
+  M.framer = function (src, focus, onSave, labels) {
+    const T = Object.assign({ title: 'Cadrer la photo', hint: 'Fais glisser la photo au doigt ou à la souris. Zoome avec le curseur (ou la molette, ou deux doigts).', zoom: 'Zoom', center: 'Recentrer', save: 'Enregistrer', cancel: 'Annuler', card: 'Carte', site: 'Site (écran large)', band: 'Bandeau', up: 'Monter', down: 'Descendre', left: 'Gauche', right: 'Droite' }, labels || {});
+    const f = Object.assign({ x: 50, y: 50, z: 1 }, focus || {});
+    const sh = M.openSheet('<h3>' + T.title + '</h3><p class="muted" style="margin-top:0;font-size:13px">' + T.hint + '</p>' +
+      '<div class="fr-wrap"><div class="fr-main" id="frMain" style="aspect-ratio:3/4"><img alt="" draggable="false" src="' + M.esc(src) + '"><span class="fr-grid" aria-hidden="true"></span></div>' +
+      '<div class="fr-side"><div><small>' + T.site + '</small><div class="fr-mini" style="aspect-ratio:16/9"><img alt="" src="' + M.esc(src) + '"></div></div><div><small>' + T.band + '</small><div class="fr-mini" style="aspect-ratio:40/17"><img alt="" src="' + M.esc(src) + '"></div></div>' +
+      '<div class="fr-pad"><button type="button" class="icon-btn" data-mv="0,-1" aria-label="' + T.up + '">↑</button><button type="button" class="icon-btn" data-mv="-1,0" aria-label="' + T.left + '">←</button><button type="button" class="icon-btn" data-mv="center" aria-label="' + T.center + '">◎</button><button type="button" class="icon-btn" data-mv="1,0" aria-label="' + T.right + '">→</button><button type="button" class="icon-btn" data-mv="0,1" aria-label="' + T.down + '">↓</button></div></div></div>' +
+      '<label class="fr-zoom">' + T.zoom + ' <input type="range" id="frZ" min="1" max="3" step="0.01" value="' + f.z + '"><b id="frZv"></b></label>' +
+      '<div class="row" style="margin-top:12px"><button type="button" class="btn gold" id="frOk">' + T.save + '</button><button type="button" class="btn" id="frC">' + T.center + '</button><button type="button" class="btn ghost" id="frNo">' + T.cancel + '</button></div>');
+    const main = M.$('#frMain', sh), imgs = M.$$('img', sh), z = M.$('#frZ', sh);
+    const paint = () => { imgs.forEach(i => i.style.cssText = M.focusStyle(f)); z.value = f.z; M.$('#frZv', sh).textContent = '×' + (+f.z).toFixed(2); };
+    // taille de la fenêtre visible, en fraction de l'image, pour le cadre principal
+    const win = () => { const im = imgs[0], A = (im.naturalWidth || 4) / (im.naturalHeight || 3), r = main.clientWidth / main.clientHeight;
+      return A > r ? [r / A / f.z, 1 / f.z] : [1 / f.z, A / r / f.z]; };
+    const shift = (dxFrac, dyFrac) => { const [cw, ch] = win();
+      // la fenêtre visible commence à left = x·(1 − cw) ; on la déplace puis on recalcule x
+      if (cw < 0.999) { const left = Math.min(1 - cw, Math.max(0, f.x / 100 * (1 - cw) + dxFrac * cw)); f.x = +(left / (1 - cw) * 100).toFixed(2); }
+      if (ch < 0.999) { const top = Math.min(1 - ch, Math.max(0, f.y / 100 * (1 - ch) + dyFrac * ch)); f.y = +(top / (1 - ch) * 100).toFixed(2); }
+      paint(); };
+    // glisser (souris ou doigt) et pincer pour zoomer
+    const pts = new Map(); let last = null, pinch = null;
+    main.addEventListener('pointerdown', e => { main.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); last = [e.clientX, e.clientY];
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: f.z }; } });
+    main.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2 && pinch) { const [a, b] = [...pts.values()]; f.z = Math.min(3, Math.max(1, pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d)); paint(); return; }
+      if (pts.size === 1 && last) { const dx = e.clientX - last[0], dy = e.clientY - last[1]; last = [e.clientX, e.clientY]; shift(-dx / main.clientWidth, -dy / main.clientHeight); } });
+    const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; last = pts.size ? [...pts.values()][0] : null; };
+    main.addEventListener('pointerup', up); main.addEventListener('pointercancel', up);
+    main.addEventListener('wheel', e => { e.preventDefault(); f.z = Math.min(3, Math.max(1, f.z * (e.deltaY < 0 ? 1.06 : 1 / 1.06))); paint(); }, { passive: false });
+    z.oninput = () => { f.z = +z.value; paint(); };
+    M.$$('[data-mv]', sh).forEach(b => b.onclick = () => { if (b.dataset.mv === 'center') { f.x = 50; f.y = 50; return paint(); } const [dx, dy] = b.dataset.mv.split(',').map(Number); shift(dx * 0.04, dy * 0.04); });
+    M.$('#frC', sh).onclick = () => { f.x = 50; f.y = 50; f.z = 1; paint(); };
+    M.$('#frNo', sh).onclick = M.closeSheet;
+    M.$('#frOk', sh).onclick = async () => { try { await onSave({ x: f.x, y: f.y, z: +(+f.z).toFixed(3) }); M.closeSheet(); } catch (e) { M.toast(e.message); } };
+    imgs[0].onload = paint; paint();
+  };
+
   // ---------- effets
   M.confetti = function (n = 70, kind = 'confetti') {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;

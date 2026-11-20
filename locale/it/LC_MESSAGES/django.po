@@ -157,11 +157,44 @@ msgstr "Attiva la localizzazione per vederti sulla mappa."
 msgid "Position mise à jour moins souvent pour économiser la batterie"
 msgstr "Posizione aggiornata meno spesso per risparmiare batteria"
 
+msgid "✧ AVEC TOUT NOTRE AMOUR ✧"
+msgstr "✧ CON TUTTO IL NOSTRO AMORE ✧"
+
 msgid "Cher·e"
 msgstr "Caro/a"
 
-msgid "Scannez pour le mur des vœux et vos photos"
-msgstr "Scansiona per il muro dei desideri e le foto"
+msgid "Avec joie, nous célébrons votre présence à nos côtés ! 🥂"
+msgstr "Con gioia festeggiamo la vostra presenza al nostro fianco! 🥂"
+
+msgid "C'est aujourd'hui !"
+msgstr "È oggi!"
+
+msgid "Le grand jour approche !"
+msgstr "Il grande giorno si avvicina!"
+
+msgid "lieux de fête"
+msgstr "luoghi di festa"
+
+msgid "Lieu unique · Magie garantie ✨"
+msgstr "Un solo luogo · Magia garantita ✨"
+
+msgid "CARTE D'INVITATION AU MARIAGE"
+msgstr "PARTECIPAZIONE DI NOZZE"
+
+msgid "CARTE D'INVITATION"
+msgstr "INVITO"
+
+msgid "Un grand merci pour votre réponse positive"
+msgstr "Grazie di cuore per aver accettato"
+
+msgid "Lieu unique · Célébration"
+msgstr "Un solo luogo · Celebrazione"
+
+msgid "Ouvrir le mur des vœux"
+msgstr "Apri il muro degli auguri"
+
+msgid "Scannez ou touchez le QR code : mur des vœux et vos photos"
+msgstr "Scansiona o tocca il QR code: muro degli auguri e le tue foto"
 
 msgid "Plus que…"
 msgstr "Mancano…"
