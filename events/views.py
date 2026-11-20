@@ -108,7 +108,9 @@ def gifts_manager(request, slug):
 def _plan_opts(request, event):
     lang = request.GET.get("lang") if request.GET.get("lang") in (event.languages or ["fr"]) else (event.languages or ["fr"])[0]
     style = request.GET.get("style") if request.GET.get("style") in plan_render.STYLES else "jardin"
-    return {"style": style, "lang": lang, "photo": request.GET.get("photo", "1") == "1", "quotes": request.GET.get("quotes", "1") == "1"}
+    layout = request.GET.get("layout") if request.GET.get("layout") in plan_render.LAYOUTS else "cards"
+    return {"style": style, "lang": lang, "photo": request.GET.get("photo", "1") == "1", "quotes": request.GET.get("quotes", "1") == "1",
+            "layout": layout, "sort": "nom" if request.GET.get("sort") == "nom" else "prenom"}
 
 
 @login_required
@@ -117,7 +119,7 @@ def plan_pdf(request, slug):
     event = owned(request, slug)
     o = _plan_opts(request, event)
     buf = plan_render.render_pdf(event, **o)
-    return FileResponse(buf, as_attachment=request.GET.get("inline") != "1", filename=f"plan-de-table-{event.slug}-{o['style']}.pdf")
+    return FileResponse(buf, as_attachment=request.GET.get("inline") != "1", filename=f"plan-de-table-{event.slug}-{o['layout']}-{o['style']}.pdf")
 
 
 @login_required
@@ -127,7 +129,7 @@ def plan_svg(request, slug):
     o = _plan_opts(request, event)
     resp = HttpResponse(plan_render.render_svg(event, **o), content_type="image/svg+xml; charset=utf-8")
     if request.GET.get("inline") != "1":
-        resp["Content-Disposition"] = f'attachment; filename="plan-de-table-{event.slug}-{o["style"]}.svg"'
+        resp["Content-Disposition"] = f'attachment; filename="plan-de-table-{event.slug}-{o["layout"]}-{o["style"]}.svg"'
     return resp
 
 

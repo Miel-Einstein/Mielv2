@@ -219,18 +219,41 @@
 
   // ---------- téléchargement du plan (SVG, PDF, PNG)
   const STYLES = [['jardin', 'Jardin', 'Ivoire, feuillages et or'], ['nuit', 'Nuit dorée', 'Bleu nuit et or'], ['minimal', 'Minimal', 'Noir et blanc, peu d\'encre']];
-  const DL = { style: 'jardin', photo: true, quotes: true, lang: L1 };
-  const planURL = (fmt, extra) => '/app/e/' + EV.slug + '/plan.' + fmt + '?style=' + DL.style + '&lang=' + DL.lang + '&photo=' + (DL.photo ? 1 : 0) + '&quotes=' + (DL.quotes ? 1 : 0) + (extra || '');
+  const DL = { style: 'jardin', photo: true, quotes: true, lang: L1, layout: 'cards', sort: 'prenom', v: 0, head: false };
+  const LAYOUTS = [['cards', '🃏', 'Cartes par table', 'Comme ton modèle'], ['alpha', '🔤', 'Liste A–Z', '« Trouvez votre table » : chaque invité et sa table'], ['table', '📜', 'Liste par table', 'Simple et élégante, sans cartes']];
+  const planURL = (fmt, extra) => '/app/e/' + EV.slug + '/plan.' + fmt + '?style=' + DL.style + '&lang=' + DL.lang + '&photo=' + (DL.photo ? 1 : 0) + '&quotes=' + (DL.quotes ? 1 : 0) + '&layout=' + DL.layout + '&sort=' + DL.sort + '&v=' + DL.v + (extra || '');
   function openDownload() {
     const draw = () => {
-      const sh = openSheet('<h3>Télécharger le plan de table</h3><p class="muted" style="margin-top:0">Choisis un modèle, puis un format.</p>' +
-        '<div class="dl-styles">' + STYLES.map(([k, n, d]) => '<button type="button" class="dl-style' + (DL.style === k ? ' on' : '') + '" data-st="' + k + '"><span class="pv"><img alt="" loading="lazy" src="/app/e/' + EV.slug + '/plan.svg?inline=1&photo=0&style=' + k + '&lang=' + DL.lang + '"></span><b>' + n + '</b><small>' + d + '</small></button>').join('') + '</div>' +
+      const ph = EV.plan_header || {}, H = Object.assign({}, (ph.texts || {})[DL.lang] || {});
+      const sh = openSheet('<h3>Télécharger le plan de table</h3><p class="muted" style="margin-top:0">Choisis une mise en page, un modèle, puis un format.</p>' +
+        '<div class="dl-layouts">' + LAYOUTS.map(([k, ic, n, d]) => '<button type="button" class="chip' + (DL.layout === k ? ' on' : '') + '" data-ly="' + k + '" title="' + d + '">' + ic + ' ' + n + '</button>').join('') + '</div>' +
+        (DL.layout === 'alpha' ? '<div class="row" style="margin:8px 0 0"><span class="muted" style="font-size:13px">Trier par</span><button type="button" class="chip' + (DL.sort === 'prenom' ? ' on' : '') + '" data-so="prenom">Prénom</button><button type="button" class="chip' + (DL.sort === 'nom' ? ' on' : '') + '" data-so="nom">Nom de famille</button></div>' : '') +
+        '<div class="dl-styles" style="margin-top:12px">' + STYLES.map(([k, n, d]) => '<button type="button" class="dl-style' + (DL.style === k ? ' on' : '') + '" data-st="' + k + '"><span class="pv"><img alt="" loading="lazy" src="/app/e/' + EV.slug + '/plan.svg?inline=1&photo=0&style=' + k + '&lang=' + DL.lang + '&layout=' + DL.layout + '&sort=' + DL.sort + '&v=' + DL.v + '"></span><b>' + n + '</b><small>' + d + '</small></button>').join('') + '</div>' +
+        '<details class="dl-head" ' + (DL.head ? 'open' : '') + '><summary>✎ Personnaliser l\'en-tête</summary><p class="muted" style="font-size:12.5px;margin:6px 0">Laisse un champ vide pour le texte automatique. Pour masquer une ligne, écris un tiret « - ».</p><div class="grid" style="gap:8px">' +
+          '<label class="f">Monogramme<input class="inp" id="hM" maxlength="20" value="' + esc(ph.monogram || '') + '" placeholder="ex. R | C"></label>' +
+          '<label class="f">Titre<input class="inp" id="hT" maxlength="120" value="' + esc(H.title || '') + '" placeholder="ex. Plan de table, Trouvez votre table"></label>' +
+          '<label class="f">Phrase sous le titre<input class="inp" id="hG" maxlength="120" value="' + esc(H.tagline === '' ? '-' : (H.tagline || '')) + '" placeholder="ex. Merci de célébrer ce jour avec nous"></label>' +
+          '<label class="f">Prénoms<input class="inp" id="hN" maxlength="120" value="' + esc(H.names || '') + '" placeholder="' + esc(tr(EV.title, DL.lang)) + '"></label>' +
+          '<label class="f">Date et lieu<input class="inp" id="hP" maxlength="120" value="' + esc(H.place === '' ? '-' : (H.place || '')) + '" placeholder="ex. Samedi 29 août 2026 · Yaoundé"></label>' +
+          '<label class="chk"><input type="checkbox" id="hS" ' + (ph.stats === false ? '' : 'checked') + '> Afficher le nombre de tables et d\'invités</label>' +
+          '<div class="row"><button type="button" class="btn sm gold" id="hSave">Enregistrer l\'en-tête</button><button type="button" class="btn sm ghost" id="hReset">Revenir aux textes automatiques</button></div></div></details>' +
         '<div class="row" style="margin:12px 0"><label class="chk"><input type="checkbox" id="dlPh" ' + (DL.photo ? 'checked' : '') + '> Photo de couverture</label><label class="chk"><input type="checkbox" id="dlQ" ' + (DL.quotes ? 'checked' : '') + '> Citations et versets</label>' +
         (EV.languages.length > 1 ? '<select class="inp" id="dlL" style="max-width:160px">' + EV.languages.map(l => '<option value="' + l + '" ' + (DL.lang === l ? 'selected' : '') + '>' + ({ fr: '🇫🇷 Français', en: '🇬🇧 English', it: '🇮🇹 Italiano', ln: '🇨🇬 Lingala' })[l] + '</option>').join('') + '</select>' : '') + '</div>' +
         '<div class="dl-formats"><a class="btn gold" id="dlSvg" href="' + planURL('svg') + '"><b>SVG</b><small>Affiche nette à toutes les tailles, pour l\'imprimeur</small></a>' +
         '<a class="btn" id="dlPdf" href="' + planURL('pdf') + '"><b>PDF A4</b><small>Pages à imprimer, aucune table coupée</small></a>' +
         '<button type="button" class="btn" id="dlPng"><b>PNG</b><small>Image à partager sur WhatsApp</small></button></div>');
       $$('[data-st]', sh).forEach(b => b.onclick = () => { DL.style = b.dataset.st; draw(); });
+      $$('[data-ly]', sh).forEach(b => b.onclick = () => { DL.layout = b.dataset.ly; draw(); });
+      $$('[data-so]', sh).forEach(b => b.onclick = () => { DL.sort = b.dataset.so; draw(); });
+      $('.dl-head', sh).ontoggle = e => { DL.head = e.target.open; };
+      const saveHead = async header => { try { const r = await api(BASE, { method: 'PATCH', json: { plan_header: header } }); EV.plan_header = r.plan_header; DL.v++; DL.head = true; toast('En-tête enregistré ✦'); draw(); } catch (e) { toast(e.message); } };
+      $('#hSave', sh).onclick = () => {
+        const val = id => { const v = $(id, sh).value.trim(); return v === '-' ? '' : (v || null); };
+        const texts = Object.assign({}, (EV.plan_header || {}).texts || {}), t = {};
+        [['title', '#hT'], ['tagline', '#hG'], ['names', '#hN'], ['place', '#hP']].forEach(([k, id]) => { const v = val(id); if (v !== null) t[k] = v; });
+        texts[DL.lang] = t; saveHead({ monogram: $('#hM', sh).value.trim(), stats: $('#hS', sh).checked, texts });
+      };
+      $('#hReset', sh).onclick = () => { const texts = Object.assign({}, (EV.plan_header || {}).texts || {}); delete texts[DL.lang]; saveHead({ monogram: '', stats: true, texts }); };
       $('#dlPh', sh).onchange = e => { DL.photo = e.target.checked; draw(); };
       $('#dlQ', sh).onchange = e => { DL.quotes = e.target.checked; draw(); };
       const ls = $('#dlL', sh); if (ls) ls.onchange = e => { DL.lang = e.target.value; draw(); };

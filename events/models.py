@@ -91,6 +91,8 @@ class Event(models.Model):
     # Fond des pages du site : {"mode": default|color|gradient|image, "c1", "c2", "veil": 0-85, "tone": light|dark, "scope": site|all}
     site_bg = models.JSONField(default=dict, blank=True)
     site_bg_image = models.ImageField(upload_to="events/backgrounds/", blank=True)
+    # En-tête du plan de table : {"monogram": "", "stats": true, "texts": {lang: {"title", "tagline", "names", "place"}}}
+    plan_header = models.JSONField(default=dict, blank=True)
     partner1_image = models.ImageField(upload_to="events/couple/", blank=True)
     partner2_image = models.ImageField(upload_to="events/couple/", blank=True)
     # Enfants

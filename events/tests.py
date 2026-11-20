@@ -284,3 +284,23 @@ class PlanAndBackgroundTests(TestCase):
         self.assertContains(self.client.get(f"/e/{self.ev.slug}/"), "linear-gradient(160deg,#123456,#e7d4ad)")
         self.assertNotContains(self.client.get(f"/e/{self.ev.slug}/rsvp/"), "160deg,#123456")  # seulement le site
         self.assertNotContains(self.client.get("/connexion/"), "#123456")
+
+
+class PlanListTests(PlanAndBackgroundTests):
+    def test_list_layouts_and_custom_header(self):
+        from events.services import seating
+        seating.assign(self.ev, {"tables": 3, "capacity": 8, "specials": []})
+        hdr = {"monogram": "R | C", "stats": False, "texts": {"fr": {"title": "Trouvez votre table", "tagline": "", "place": "Yaoundé"}, "de": {"title": "x"}}}
+        r = self.client.patch(f"/api/e/{self.ev.slug}/", data=json.dumps({"plan_header": hdr}), content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("de", r.json()["plan_header"]["texts"])
+        body = self.client.get(f"/app/e/{self.ev.slug}/plan.svg?layout=alpha&sort=nom").content.decode()
+        self.assertIn("TROUVEZ VOTRE TABLE", body)
+        self.assertIn("TEST Invité0", body)
+        self.assertNotIn("Merci de célébrer", body)
+        self.assertNotIn("invités", body)  # nombre d'invités masqué
+        body = self.client.get(f"/app/e/{self.ev.slug}/plan.svg?layout=table").content.decode()
+        self.assertIn("Invité0 Test", body)
+        r = self.client.get(f"/app/e/{self.ev.slug}/plan.pdf?layout=alpha")
+        self.assertEqual(b"".join(r.streaming_content)[:4], b"%PDF")
+        self.assertEqual(self.client.get(f"/api/e/{self.ev.slug}/plan-header/").json()["fr"]["title"], "PLAN DE TABLE")

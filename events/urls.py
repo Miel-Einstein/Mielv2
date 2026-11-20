@@ -48,6 +48,7 @@ urlpatterns = [
     path("api/e/<slug:slug>/tables/", api.tables),
     path("api/e/<slug:slug>/tables/auto/", api.tables_auto),
     path("api/e/<slug:slug>/tables/theme/", api.tables_theme),
+    path("api/e/<slug:slug>/plan-header/", api.plan_header_defaults),
     path("api/e/<slug:slug>/guests/", api.guests),
     path("api/e/<slug:slug>/guests/<int:pk>/", api.guest_detail),
     path("api/e/<slug:slug>/dashboard/", api.dashboard),

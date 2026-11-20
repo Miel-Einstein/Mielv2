@@ -80,7 +80,7 @@ def event_data(e):
         "categories": [category_data(c) for c in e.categories.all()],
         "venues": [venue_data(v) for v in e.venues.all()],
         "story": [story_data(s) for s in e.story.all()],
-        "site_bg": e.site_bg or {"mode": "default"}, "site_bg_image": _url(e.site_bg_image),
+        "site_bg": e.site_bg or {"mode": "default"}, "plan_header": e.plan_header or {}, "site_bg_image": _url(e.site_bg_image),
         "couple": e.couple or {}, "partner1_image": _url(e.partner1_image), "partner2_image": _url(e.partner2_image),
         "gallery": [gallery_data(g) for g in e.gallery.all()],
         "moments": [moment_data(m) for m in e.moments.all()],

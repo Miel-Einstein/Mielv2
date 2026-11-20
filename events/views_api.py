@@ -94,7 +94,7 @@ def identity(event, token):
 EVENT_FIELDS = {"type", "title", "subtitle", "date", "time", "timezone", "languages", "services", "card_template",
                 "site_template", "kids_invited", "kids_table", "age_with_parents", "age_kids_max", "baby_chair",
                 "supervisor_name", "max_companions", "ask_languages", "conversation_languages", "budget", "currency",
-                "guest_target", "song", "telegram_chat_id", "social_links", "couple", "site_bg"}
+                "guest_target", "song", "telegram_chat_id", "social_links", "couple", "site_bg", "plan_header"}
 
 
 @require_http_methods(["GET", "PATCH", "POST"])
@@ -123,6 +123,14 @@ def event_detail(request, event):
             event.site_bg = {"mode": mode, "c1": v.get("c1") if hexok(v.get("c1")) else "#faf6ef", "c2": v.get("c2") if hexok(v.get("c2")) else "#e7d4ad",
                              "veil": max(0, min(85, int(v.get("veil") or 0))), "tone": "dark" if v.get("tone") == "dark" else "light",
                              "scope": "all" if v.get("scope") == "all" else "site"}
+        elif k == "plan_header":
+            if not isinstance(v, dict):
+                return err("Format invalide")
+            texts = {}
+            for l, tx in (v.get("texts") or {}).items():
+                if l in event.languages and isinstance(tx, dict):
+                    texts[l] = {f: str(tx[f])[:120] for f in ("title", "tagline", "names", "place") if f in tx and tx[f] is not None}
+            event.plan_header = {"monogram": str(v.get("monogram") or "")[:20], "stats": bool(v.get("stats", True)), "texts": texts}
         elif k == "couple":
             if not isinstance(v, dict):
                 return err("Format invalide")
@@ -239,6 +247,18 @@ def story_image(request, event, pk):
     s.image = request.FILES["file"]
     s.save()
     return ok(S.story_data(s))
+
+
+@require_http_methods(["GET"])
+@owner_api
+def plan_header_defaults(request, event):
+    """Textes d'en-tête affichés si l'organisateur ne les change pas (pour pré-remplir le formulaire)."""
+    from events.services import plan_svg
+    saved = event.plan_header
+    event.plan_header = {}
+    data = {l: plan_svg.header_texts(event, l) for l in event.languages}
+    event.plan_header = saved
+    return ok(data)
 
 
 @require_http_methods(["POST"])

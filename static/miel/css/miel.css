@@ -397,3 +397,7 @@ body.bot-open .bot-fab{opacity:0;pointer-events:none;transform:scale(.9)}
 .bg-veil input[type=range]{display:block;width:220px;accent-color:#e8c97a}
 .bg-prev{margin-top:10px;height:110px;border-radius:14px;border:1px solid rgba(232,201,122,.4);display:grid;place-items:center}
 .bg-prev span{font-family:Georgia,serif;font-style:italic;font-size:26px;color:#3a2a1c;text-shadow:0 1px 0 rgba(255,255,255,.3)}
+
+.dl-layouts{display:flex;flex-wrap:wrap;gap:8px}
+.dl-head{margin-top:12px;border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:var(--surface-2)}
+.dl-head summary{cursor:pointer;font-weight:700}
