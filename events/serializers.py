@@ -29,6 +29,10 @@ def venue_data(v):
             "entrance": v.entrance, "landmark": v.landmark, "contact": v.contact}
 
 
+def gallery_data(g):
+    return {"id": g.id, "url": _url(g.image)}
+
+
 def story_data(s):
     return {"id": s.id, "order": s.order, "title": s.title, "text": s.text, "image": _url(s.image)}
 
@@ -76,6 +80,8 @@ def event_data(e):
         "categories": [category_data(c) for c in e.categories.all()],
         "venues": [venue_data(v) for v in e.venues.all()],
         "story": [story_data(s) for s in e.story.all()],
+        "couple": e.couple or {}, "partner1_image": _url(e.partner1_image), "partner2_image": _url(e.partner2_image),
+        "gallery": [gallery_data(g) for g in e.gallery.all()],
         "moments": [moment_data(m) for m in e.moments.all()],
         "roles": [role_data(r) for r in e.roles.prefetch_related("contacts")],
         "alerter": [alerter_data(i, e) for i in e.alerter_items.all()],

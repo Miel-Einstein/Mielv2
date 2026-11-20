@@ -7,6 +7,8 @@ Pour compléter le lingala : ajouter les paires dans CATALOG["ln"], puis
 """
 
 EN = {
+    "Les mariés": "The couple", "Galerie": "Gallery", "Nos photos": "Our photos", "Merci d’être à nos côtés": "Thank you for being with us", "Retour en haut": "Back to top", "Défiler": "Scroll down", "Nous nous marions": "We're getting married",
+
     "Langue": "Language", "Annuler": "Undo", "Préparez-vous…": "Get ready…", "Bonjour": "Hello",
     "Dites-nous d’abord qui vous êtes 😊": "Tell us who you are first 😊", "Vœu supprimé": "Wish deleted", "Envoyé ✦": "Sent ✦",
     "Merci": "Thank you", "Votre carte personnalisée est prête 🎉": "Your personal card is ready 🎉",
@@ -48,6 +50,8 @@ EN = {
 }
 
 IT = {
+    "Les mariés": "Gli sposi", "Galerie": "Galleria", "Nos photos": "Le nostre foto", "Merci d’être à nos côtés": "Grazie di essere con noi", "Retour en haut": "Torna su", "Défiler": "Scorri", "Nous nous marions": "Ci sposiamo",
+
     "Langue": "Lingua", "Annuler": "Annulla", "Préparez-vous…": "Preparatevi…", "Bonjour": "Ciao",
     "Dites-nous d’abord qui vous êtes 😊": "Dicci prima chi sei 😊", "Vœu supprimé": "Desiderio eliminato", "Envoyé ✦": "Inviato ✦",
     "Merci": "Grazie", "Votre carte personnalisée est prête 🎉": "Il tuo invito personalizzato è pronto 🎉",

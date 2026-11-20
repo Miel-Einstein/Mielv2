@@ -33,6 +33,8 @@ urlpatterns = [
     path("api/e/<slug:slug>/venues/", api.venues),
     path("api/e/<slug:slug>/story/", api.story),
     path("api/e/<slug:slug>/story/<int:pk>/image/", api.story_image),
+    path("api/e/<slug:slug>/gallery/", api.gallery),
+    path("api/e/<slug:slug>/gallery/<int:pk>/", api.gallery_item),
     path("api/e/<slug:slug>/bot/", api.bot_state),
     path("api/e/<slug:slug>/alerter/", api.alerter_list),
     path("api/e/<slug:slug>/alerter/reset/", api.alerter_reset),

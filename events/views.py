@@ -144,9 +144,9 @@ def event_home(request, slug):
     event = get_object_or_404(Event, slug=slug)
     if not event.site_enabled:
         return redirect("rsvp", slug=slug)
-    choice = request.GET.get("tpl") if request.GET.get("tpl") in ("A", "B") else event.site_template  # ?tpl= : aperçu
-    tpl = "events/site_A.html" if choice == "A" else "events/site_B.html"
-    return guest_render(request, tpl, event, {"venues": event.venues.all(), "story": event.story.all()})
+    choice = request.GET.get("tpl") if request.GET.get("tpl") in ("A", "B", "C") else event.site_template  # ?tpl= : aperçu
+    tpl = {"A": "events/site_A.html", "B": "events/site_B.html", "C": "events/site_C.html"}.get(choice, "events/site_A.html")
+    return guest_render(request, tpl, event, {"venues": event.venues.all(), "story": event.story.all(), "gallery": event.gallery.all()})
 
 
 def rsvp(request, slug):

@@ -311,6 +311,27 @@ msgstr "Scan to leave your wish 💛"
 msgid "Histoire"
 msgstr "Story"
 
+msgid "Les mariés"
+msgstr "The couple"
+
+msgid "Galerie"
+msgstr "Gallery"
+
+msgid "Nous nous marions"
+msgstr "We're getting married"
+
+msgid "Défiler"
+msgstr "Scroll down"
+
+msgid "Nos photos"
+msgstr "Our photos"
+
+msgid "Merci d’être à nos côtés"
+msgstr "Thank you for being with us"
+
+msgid "Retour en haut"
+msgstr "Back to top"
+
 msgid "Messages d’amour de nos invités"
 msgstr "Love notes from our guests"
 

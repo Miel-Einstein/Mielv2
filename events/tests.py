@@ -223,3 +223,21 @@ class AuthTests(TestCase):
         r = self.client.post("/inscription/", {"username": "x", "email": "x@exemple.com", "password": "a", "confirmation": "b", "terms_accepted": "1"})
         self.assertContains(r, "identiques")
         self.assertEqual(self.client.get("/connexion/").status_code, 200)
+
+
+class SiteCTests(TestCase):
+    def test_template_c_renders_couple_and_gallery(self):
+        u = User.objects.create_user("c", "c@x.co", "pw-12345678")
+        ev = Event.objects.create(owner=u, type="mariage", title={"fr": "Awa & Daniel"}, languages=["fr", "en"], services=["carte", "site"], site_template="C",
+                                  couple={"p1": {"name": "Awa", "text": {"fr": "Rieuse", "en": "Cheerful"}}, "p2": {"name": "Daniel", "text": {}}})
+        r = self.client.get(f"/e/{ev.slug}/?lang=en")
+        self.assertContains(r, "c-hero")
+        self.assertContains(r, "Cheerful")
+        self.assertContains(r, "The couple")
+        self.client.force_login(u)
+        r = self.client.patch(f"/api/e/{ev.slug}/", data='{"site_template": "Z"}', content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+        r = self.client.patch(f"/api/e/{ev.slug}/", data='{"couple": {"p1": {"name": "A", "text": {"fr": "x", "de": "y"}}}}', content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        ev.refresh_from_db()
+        self.assertEqual(ev.couple["p1"]["text"], {"fr": "x"})

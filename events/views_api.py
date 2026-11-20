@@ -17,7 +17,7 @@ from django.views.decorators.http import require_http_methods
 
 from events import serializers as S
 from events.models import (AlerterItem, BotSession, Category, Child, Companion, Contact, DeliveryOption, Event, Gift,
-                           GiftReservation, Guest, Moment, Reaction, Role, StoryStep, Table, Venue, Visitor, Wish, t)
+                           GalleryImage, GiftReservation, Guest, Moment, Reaction, Role, StoryStep, Table, Venue, Visitor, Wish, t)
 from events.services import alerter, notify, seating
 from events.services.defaults import CATEGORY_COLORS, reset_alerter
 from events.services.realtime import broadcast
@@ -94,7 +94,7 @@ def identity(event, token):
 EVENT_FIELDS = {"type", "title", "subtitle", "date", "time", "timezone", "languages", "services", "card_template",
                 "site_template", "kids_invited", "kids_table", "age_with_parents", "age_kids_max", "baby_chair",
                 "supervisor_name", "max_companions", "ask_languages", "conversation_languages", "budget", "currency",
-                "guest_target", "song", "telegram_chat_id", "social_links"}
+                "guest_target", "song", "telegram_chat_id", "social_links", "couple"}
 
 
 @require_http_methods(["GET", "PATCH", "POST"])
@@ -111,6 +111,16 @@ def event_detail(request, event):
             event.date = datetime.strptime(v, "%Y-%m-%d").date() if v else None
         elif k == "time":
             event.start_time = parse_time(v) or event.start_time
+        elif k == "site_template":
+            if v not in ("A", "B", "C"):
+                return err("Modèle de site inconnu")
+            event.site_template = v
+        elif k == "couple":
+            if not isinstance(v, dict):
+                return err("Format invalide")
+            event.couple = {p: {"name": str((v.get(p) or {}).get("name", ""))[:80],
+                                "text": {l: str(t)[:1500] for l, t in ((v.get(p) or {}).get("text") or {}).items() if l in event.languages}}
+                            for p in ("p1", "p2")}
         elif k == "song":
             event.song_id = int(v) if v else None
         elif k == "budget":
@@ -148,7 +158,7 @@ def event_detail(request, event):
 def event_upload(request, event):
     field = request.POST.get("field")
     f = request.FILES.get("file")
-    if field not in ("cover_image", "cover_image_2") or not f:
+    if field not in ("cover_image", "cover_image_2", "partner1_image", "partner2_image") or not f:
         return err("Fichier manquant")
     setattr(event, field, f)
     event.save()
@@ -221,6 +231,28 @@ def story_image(request, event, pk):
     s.image = request.FILES["file"]
     s.save()
     return ok(S.story_data(s))
+
+
+@require_http_methods(["GET", "POST"])
+@owner_api
+def gallery(request, event):
+    if request.method == "POST":
+        files = request.FILES.getlist("file")
+        if not files:
+            return err("Fichier manquant")
+        if event.gallery.count() + len(files) > 40:
+            return err("La galerie est limitée à 40 photos")
+        start = event.gallery.count()
+        for i, f in enumerate(files):
+            GalleryImage.objects.create(event=event, image=f, order=start + i)
+    return ok([S.gallery_data(g) for g in event.gallery.all()])
+
+
+@require_http_methods(["DELETE"])
+@owner_api
+def gallery_item(request, event, pk):
+    get_object_or_404(GalleryImage, pk=pk, event=event).delete()
+    return ok([S.gallery_data(g) for g in event.gallery.all()])
 
 
 # ---------------------------------------------------------------- bot

@@ -311,6 +311,27 @@ msgstr "Scansiona per lasciare il tuo desiderio 💛"
 msgid "Histoire"
 msgstr "Storia"
 
+msgid "Les mariés"
+msgstr "Gli sposi"
+
+msgid "Galerie"
+msgstr "Galleria"
+
+msgid "Nous nous marions"
+msgstr "Ci sposiamo"
+
+msgid "Défiler"
+msgstr "Scorri"
+
+msgid "Nos photos"
+msgstr "Le nostre foto"
+
+msgid "Merci d’être à nos côtés"
+msgstr "Grazie di essere con noi"
+
+msgid "Retour en haut"
+msgstr "Torna su"
+
 msgid "Messages d’amour de nos invités"
 msgstr "Messaggi d'amore dai nostri ospiti"
 

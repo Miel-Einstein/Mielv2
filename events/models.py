@@ -49,7 +49,7 @@ SERVICE_CHOICES = [
     ("site", "Site du mariage"),
 ]
 CARD_TEMPLATES = [("botanique", "Botanique"), ("moderne", "Moderne"), ("rose", "Rose romantique")]
-SITE_TEMPLATES = [("A", "Botanical Editorial"), ("B", "Modern Romance")]
+SITE_TEMPLATES = [("A", "Botanical Editorial"), ("B", "Modern Romance"), ("C", "Luxe Romantique")]
 
 
 class Song(models.Model):
@@ -86,6 +86,10 @@ class Event(models.Model):
     site_template = models.CharField(max_length=2, choices=SITE_TEMPLATES, default="A")
     cover_image = models.ImageField(upload_to="events/covers/", blank=True)
     cover_image_2 = models.ImageField(upload_to="events/covers/", blank=True)
+    # Section « Les mariés » (modèle C) : {"p1": {"name": "", "text": {lang: ...}}, "p2": {...}}
+    couple = models.JSONField(default=dict, blank=True)
+    partner1_image = models.ImageField(upload_to="events/couple/", blank=True)
+    partner2_image = models.ImageField(upload_to="events/couple/", blank=True)
     # Enfants
     kids_invited = models.BooleanField(default=True)
     kids_table = models.BooleanField(default=False)
@@ -187,6 +191,17 @@ class StoryStep(models.Model):
     title = models.JSONField(default=dict)
     text = models.JSONField(default=dict, blank=True)
     image = models.ImageField(upload_to="events/story/", blank=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+
+class GalleryImage(models.Model):
+    """Galerie photos du site (modèle C)."""
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="gallery")
+    image = models.ImageField(upload_to="events/gallery/")
+    order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ["order", "id"]

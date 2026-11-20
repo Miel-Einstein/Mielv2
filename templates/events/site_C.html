@@ -1,0 +1,247 @@
+{% extends "base_guest.html" %}{% load i18n miel %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Allura&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Modèle C — « Luxe Romantique » : ivoire, champagne, bordeaux, or ancien */
+:root{--ivory:#faf6ef;--cream:#f3ead9;--champagne:#e7d4ad;--gold:#c9a66b;--gold-deep:#a67c3a;--burgundy:#6e1f2a;--burgundy-deep:#4a1820;--dark:#1a120b;--muted:#7d6a55}
+body.siteC{background:var(--ivory);color:var(--dark);font-family:'Cormorant Garamond',serif;font-size:18px;letter-spacing:.2px}
+.siteC ::selection{background:var(--burgundy);color:var(--cream)}
+.siteC a{color:var(--gold-deep)}
+.siteC .toast{font-family:'Jost',sans-serif}
+/* curseur personnalisé (ordinateur uniquement) */
+.c-dot,.c-ring{position:fixed;top:0;left:0;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:difference;transition:width .25s,height .25s,background .25s}
+.c-dot{width:8px;height:8px;background:var(--gold);border-radius:50%}.c-ring{width:38px;height:38px;border:1.5px solid var(--gold);border-radius:50%}
+body.c-grow .c-ring{width:64px;height:64px;background:rgba(201,166,107,.15)}
+@media (hover:none),(max-width:768px){.c-dot,.c-ring{display:none}}
+/* barre de navigation */
+.c-nav{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(20,14,8,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,166,107,.18);display:flex;align-items:center;justify-content:center;gap:4px;padding:0 16px;min-height:64px}
+.c-nav a.l{color:#e9dec7;font-family:'Jost',sans-serif;font-size:.74rem;text-transform:uppercase;letter-spacing:2.5px;padding:1.4rem .9rem;text-decoration:none;position:relative}
+.c-nav a.l::after{content:'';position:absolute;left:50%;bottom:1rem;width:0;height:1px;background:var(--gold);transition:width .35s,left .35s}
+.c-nav a.l:hover{color:var(--gold)}.c-nav a.l:hover::after{width:30px;left:calc(50% - 15px)}
+.c-brand{font-family:'Allura',cursive;font-size:2.4rem;color:var(--gold)!important;text-decoration:none;margin:0 2rem;line-height:1;white-space:nowrap}
+.c-langs{display:flex;gap:4px;margin-left:12px}.c-langs a{font-family:'Jost',sans-serif;font-size:.72rem;color:var(--champagne);border:1px solid rgba(231,212,173,.35);padding:4px 8px;text-decoration:none;letter-spacing:1px}.c-langs a.on{background:var(--gold);color:var(--dark);border-color:var(--gold)}
+.c-burger{display:none;background:none;border:1px solid rgba(231,212,173,.4);color:var(--champagne);font-size:1.3rem;padding:4px 12px;margin-left:auto}
+@media (max-width:991px){
+ .c-nav{justify-content:space-between;flex-wrap:wrap;padding:8px 16px}
+ .c-brand{margin:0;font-size:2rem}.c-burger{display:block}
+ .c-links{display:none;flex-basis:100%;flex-direction:column;align-items:center;padding:8px 0 14px}.c-nav.open .c-links{display:flex}
+ .c-nav a.l{padding:.8rem}.c-nav a.l::after{display:none}.c-brand.mid{display:none}.c-langs{margin:8px 0 0}
+}
+@media (min-width:992px){.c-links{display:flex;align-items:center}.c-brand.side{display:none}}
+/* hero */
+.c-hero{position:relative;height:100vh;min-height:520px;overflow:hidden;background:var(--dark)}
+.c-slide{position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,#6e1f2a,#1a120b 70%) center/cover no-repeat;opacity:0;transform:scale(1.08);transition:opacity 1.6s ease,transform 8s ease}
+.c-slide.on{opacity:1;transform:scale(1)}
+.c-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,14,8,.55) 0%,rgba(20,14,8,.25) 40%,rgba(20,14,8,.7) 100%)}
+.c-cap{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:90px 16px 40px;color:#fff}
+.c-cap h1{font-family:'Allura',cursive;font-weight:400;font-size:clamp(4rem,11vw,7rem);line-height:1;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.4);margin:0 0 1.2rem;animation:fadeUp 1.4s ease both}
+.c-band{display:inline-block;border-top:1px solid rgba(231,212,173,.55);border-bottom:1px solid rgba(231,212,173,.55);background:rgba(20,14,8,.18);backdrop-filter:blur(6px);padding:.9rem 1.6rem;font-family:'Jost',sans-serif;text-transform:uppercase;letter-spacing:4px;font-size:clamp(.8rem,2.4vw,1.1rem);animation:fadeUp 1.6s .25s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+.c-cd{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:2rem;animation:fadeUp 1.8s .5s ease both}
+.c-cd>div{min-width:84px;padding:1rem .8rem .8rem;background:rgba(250,246,239,.08);border:1px solid rgba(231,212,173,.35);backdrop-filter:blur(8px)}
+@media (max-width:420px){.c-cd{gap:.5rem;width:100%}.c-cd>div{min-width:0;flex:1 1 0;padding:.8rem .3rem}.c-cd b{font-size:1.8rem}}
+.c-cd b{display:block;font-size:2.3rem;font-weight:500;line-height:1;font-variant-numeric:tabular-nums}
+.c-cd span{display:block;margin-top:.4rem;font-family:'Jost',sans-serif;font-size:.62rem;letter-spacing:3px;text-transform:uppercase;color:var(--champagne)}
+.c-down{position:absolute;bottom:26px;left:50%;z-index:3;color:#fff;font-size:1.8rem;text-decoration:none;animation:bob 2.2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,12px)}}
+/* titres de section */
+.c-sec{padding:clamp(64px,10vw,110px) 16px}.c-wrap{max-width:1140px;margin:0 auto}
+.c-title{text-align:center;margin-bottom:3.5rem}
+.c-title h6{font-family:'Jost',sans-serif;font-weight:500;font-size:.76rem;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin:0 0 .8rem}
+.c-title h2{font-family:'Allura',cursive;font-weight:400;font-size:clamp(3.2rem,8vw,5rem);color:var(--burgundy-deep);margin:0 0 .6rem;line-height:1.1}
+.c-heart{display:inline-block;position:relative;color:var(--gold);font-size:1.1rem}
+.c-heart::before,.c-heart::after{content:'';position:absolute;top:50%;width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.c-heart::before{right:calc(100% + 14px);transform:rotate(180deg)}.c-heart::after{left:calc(100% + 14px)}
+/* apparition au défilement */
+.rv{opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.2,.8,.2,1),transform .9s cubic-bezier(.2,.8,.2,1)}.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none}.c-slide{transition:none}}
+/* les mariés */
+.c-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.c-pair+.c-pair{margin-top:0}
+.c-txt{background:linear-gradient(145deg,var(--cream),#f7eeda);border:1px solid rgba(201,166,107,.25);position:relative;padding:3rem;display:flex;flex-direction:column;justify-content:center}
+.c-txt::before{content:'';position:absolute;inset:18px;border:1px solid rgba(201,166,107,.35);pointer-events:none}
+.c-txt h3{font-size:2rem;font-weight:500;color:var(--burgundy-deep);margin:0 0 .8rem}
+.c-txt p{color:#5a4a36;font-style:italic;font-size:1.08rem;line-height:1.8;margin:0}
+.c-img{min-height:380px;background:var(--champagne) center/cover no-repeat;filter:saturate(.9) contrast(1.05)}
+.c-pair.r .c-txt{text-align:right}
+@media (max-width:767px){.c-pair{grid-template-columns:1fr}.c-pair .c-img{order:-1;min-height:300px}.c-pair.r .c-txt,.c-pair .c-txt{text-align:center;padding:2.4rem 1.6rem}}
+/* histoire */
+.c-tl{display:flex;flex-direction:column;gap:3rem}
+.c-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem;align-items:center}
+.c-row img{width:100%;aspect-ratio:4/3;object-fit:cover;box-shadow:0 30px 60px -20px rgba(74,24,32,.35);border:6px solid #fff;transition:transform .8s cubic-bezier(.2,.8,.2,1)}
+.c-row img:hover{transform:scale(1.02) rotate(-.4deg)}
+.c-card{background:linear-gradient(145deg,#fff,var(--cream));border-left:3px solid var(--gold);padding:1.8rem}
+.c-card h4{font-family:'Allura',cursive;font-weight:400;font-size:2.6rem;color:var(--burgundy);margin:0 0 .4rem;line-height:1.1}
+.c-card p{font-style:italic;color:#5a4a36;line-height:1.8;margin:0}
+.c-row.flip .c-card{order:-1;text-align:right;border-left:none;border-right:3px solid var(--gold)}
+.c-row.solo{grid-template-columns:minmax(0,1fr);max-width:640px;margin:0 auto;width:100%}
+@media (max-width:767px){.c-row,.c-row.flip{grid-template-columns:1fr;text-align:center}.c-row.flip .c-card{order:0;text-align:center;border-right:none;border-left:3px solid var(--gold)}}
+/* galerie */
+.c-gal{position:relative;background:var(--dark) center/cover no-repeat fixed;color:#fff}
+.c-gal::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,14,8,.88),rgba(74,24,32,.7))}
+.c-gal>*{position:relative}.c-gal .c-title h2{color:#fff}
+.c-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media (max-width:640px){.c-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.c-item{position:relative;overflow:hidden;aspect-ratio:1;border:none;padding:0;background:#000;cursor:pointer}
+.c-item img{width:100%;height:100%;object-fit:cover;filter:brightness(.92);transition:transform 1s cubic-bezier(.2,.8,.2,1),filter .4s}
+.c-item:hover img{transform:scale(1.08);filter:brightness(1)}
+.c-item::after{content:'+';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.4rem;color:#fff;background:rgba(20,14,8,.5);opacity:0;transition:opacity .4s}
+.c-item:hover::after{opacity:1}
+.c-lb{position:fixed;inset:0;z-index:200;background:rgba(10,6,3,.94);display:none;align-items:center;justify-content:center;padding:20px}
+.c-lb.on{display:flex}.c-lb img{max-width:100%;max-height:86vh;border:4px solid #fff}
+.c-lb button{position:absolute;background:none;border:none;color:var(--champagne);font-size:2.4rem;cursor:pointer;padding:10px}
+.c-lb .x{top:10px;right:16px}.c-lb .p{left:8px}.c-lb .n{right:8px}
+/* programme */
+.c-evs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:2.5rem 0}
+.c-ev{text-align:center;padding:0 2rem}
+.c-evs .c-ev:nth-child(odd){border-right:1px solid var(--gold)}.c-evs .c-ev:last-child{border-right:none}
+@media (max-width:700px){.c-evs .c-ev{border-right:none!important}}
+.c-ev img{width:200px;height:250px;object-fit:cover;border-radius:10px;border:5px solid #fff;box-shadow:0 25px 50px -15px rgba(74,24,32,.4);margin-bottom:1.2rem}
+.c-ev h4{font-family:'Allura',cursive;font-weight:400;font-size:2.6rem;color:var(--burgundy);margin:0 0 .4rem}
+.c-ev p{color:var(--muted);font-style:italic;margin:.2rem 0}
+/* musique */
+.c-music{display:flex;align-items:center;gap:18px;flex-wrap:wrap;max-width:760px;margin:0 auto;background:#fff;border:1px solid rgba(201,166,107,.35);padding:22px;box-shadow:0 30px 60px -25px rgba(74,24,32,.25)}
+.c-music .vinyl{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle,var(--gold) 0 14%,#1a120b 15% 100%);animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.c-stream{font-family:'Jost',sans-serif;font-size:.74rem;letter-spacing:2px;text-transform:uppercase;padding:.7rem 1.2rem;border:1px solid var(--gold);color:var(--burgundy-deep);text-decoration:none}
+/* boutons */
+.c-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.c-btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;min-height:52px;background:var(--burgundy);color:#fff!important;font-family:'Jost',sans-serif;font-weight:500;text-transform:uppercase;letter-spacing:3px;font-size:.76rem;padding:1.1rem 2.4rem;text-decoration:none;transition:color .4s}
+.c-btn::before{content:'';position:absolute;inset:0;background:var(--gold);transform:translateX(-101%);transition:transform .4s ease}
+.c-btn:hover{color:var(--dark)!important}.c-btn:hover::before{transform:none}.c-btn span{position:relative}
+.c-btn.ghost{background:transparent;color:var(--burgundy)!important;border:1px solid var(--gold)}
+/* pied de page */
+.c-foot{background:linear-gradient(180deg,var(--burgundy-deep),var(--dark));color:#fff;text-align:center;position:relative;padding:5rem 16px 3rem}
+.c-foot::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(201,166,107,.08) 1px,transparent 1px);background-size:22px 22px;opacity:.6}
+.c-foot>*{position:relative}.c-foot h2{font-family:'Allura',cursive;font-weight:400;font-size:clamp(3rem,8vw,4.6rem);color:#fff;margin:0 0 .6rem}
+.c-soc{display:flex;gap:10px;justify-content:center;margin:1.6rem 0}
+.c-soc a{width:46px;height:46px;border-radius:50%;border:1px solid rgba(231,212,173,.5);color:var(--champagne);display:grid;place-items:center;text-decoration:none;font-family:'Jost',sans-serif;font-size:.7rem;text-transform:uppercase}
+.c-soc a:hover{background:var(--gold);color:var(--dark);border-color:var(--gold)}
+.c-foot p{font-family:'Jost',sans-serif;font-size:.85rem;color:var(--champagne)}
+.c-top{position:fixed;right:22px;bottom:22px;z-index:40;width:48px;height:48px;border-radius:50%;background:var(--burgundy);color:#fff;display:grid;place-items:center;text-decoration:none;font-size:1.2rem;opacity:0;pointer-events:none;transition:opacity .3s}
+.c-top.on{opacity:1;pointer-events:auto}.c-top:hover{background:var(--gold);color:var(--dark)}
+body.siteC::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;background-image:radial-gradient(rgba(201,166,107,.05) 1px,transparent 1px);background-size:3px 3px;opacity:.4}
+</style>
+{% endblock %}
+{% block bodyclass %}siteC{% endblock %}
+{% block top %}
+<div class="c-ring" aria-hidden="true"></div><div class="c-dot" aria-hidden="true"></div>
+<nav class="c-nav" id="cNav">
+  <a class="c-brand side" href="#home" translate="no">{{ event.title|tr:lang }}</a>
+  <button class="c-burger" type="button" id="cBurger" aria-label="Menu" aria-expanded="false">☰</button>
+  <div class="c-links">
+    <a class="l" href="{% url 'rsvp' event.slug %}?lang={{ lang }}">RSVP</a>
+    {% if event.couple.p1.name or event.couple.p2.name %}<a class="l" href="#couple">{% translate "Les mariés" %}</a>{% endif %}
+    {% if story %}<a class="l" href="#story">{% translate "Notre histoire" %}</a>{% endif %}
+    <a class="c-brand mid" href="#home" translate="no">{{ event.title|tr:lang }}</a>
+    {% if gallery %}<a class="l" href="#gallery">{% translate "Galerie" %}</a>{% endif %}
+    {% if venues %}<a class="l" href="#events">{% translate "Programme" %}</a>{% endif %}
+    <a class="l" href="{% url 'map' event.slug %}?lang={{ lang }}">{% translate "Y aller" %}</a>
+    {% if langs|length > 1 %}<span class="c-langs">{% for code in langs %}<a href="?lang={{ code }}" class="{% if code == lang %}on{% endif %}">{% if code == 'fr' %}🇫🇷 FR{% elif code == 'en' %}🇬🇧 EN{% elif code == 'it' %}🇮🇹 IT{% else %}🇨🇬 LN{% endif %}</a>{% endfor %}</span>{% endif %}
+  </div>
+</nav>
+{% endblock %}
+{% block main %}
+<header class="c-hero" id="home">
+  <div class="c-slide on" {% if event.cover_image %}style="background-image:url('{{ event.cover_image.url }}')"{% endif %}></div>
+  {% if event.cover_image_2 %}<div class="c-slide" style="background-image:url('{{ event.cover_image_2.url }}')"></div>{% endif %}
+  <div class="c-cap">
+    <h1 translate="no">{{ event.title|tr:lang }}</h1>
+    <div class="c-band">{% if event.subtitle|tr:lang %}{{ event.subtitle|tr:lang }}{% else %}{% translate "Nous nous marions" %}{% endif %}</div>
+    {% if event.start_datetime %}
+    <div class="c-cd" data-countdown="{{ event.start_datetime|date:'U' }}000" translate="no">
+      <div><b data-u="d">--</b><span>{% translate "Jours" %}</span></div><div><b data-u="h">--</b><span>{% translate "Heures" %}</span></div>
+      <div><b data-u="m">--</b><span>{% translate "Min" %}</span></div><div><b data-u="s">--</b><span>{% translate "Sec" %}</span></div>
+    </div>
+    {% endif %}
+  </div>
+  <a class="c-down" href="#{% if event.couple.p1.name or event.couple.p2.name %}couple{% elif story %}story{% else %}events{% endif %}" aria-label="{% translate 'Défiler' %}">⌄</a>
+</header>
+
+{% if event.couple.p1.name or event.couple.p2.name %}
+<section class="c-sec" id="couple"><div class="c-wrap">
+  <div class="c-title rv"><h6>{% translate "Les mariés" %}</h6><h2 translate="no">{{ event.title|tr:lang }}</h2><i class="c-heart">♥</i></div>
+  {% if event.couple.p1.name %}<div class="c-pair r rv"><div class="c-txt"><h3>{{ event.couple.p1.name }}</h3>{% if event.couple.p1.text|tr:lang %}<p>{{ event.couple.p1.text|tr:lang|linebreaksbr }}</p>{% endif %}</div><div class="c-img" {% if event.partner1_image %}style="background-image:url('{{ event.partner1_image.url }}')"{% endif %}></div></div>{% endif %}
+  {% if event.couple.p2.name %}<div class="c-pair rv"><div class="c-img" {% if event.partner2_image %}style="background-image:url('{{ event.partner2_image.url }}')"{% endif %}></div><div class="c-txt"><h3>{{ event.couple.p2.name }}</h3>{% if event.couple.p2.text|tr:lang %}<p>{{ event.couple.p2.text|tr:lang|linebreaksbr }}</p>{% endif %}</div></div>{% endif %}
+</div></section>
+{% endif %}
+
+{% if story %}
+<section class="c-sec" id="story" style="padding-top:0"><div class="c-wrap">
+  <div class="c-title rv"><h6>{% translate "Notre histoire" %}</h6><h2>{% translate "Notre histoire d’amour" %}</h2><i class="c-heart">♥</i></div>
+  <div class="c-tl">{% for s in story %}
+    <div class="c-row rv {% if forloop.counter|divisibleby:2 %}flip{% endif %} {% if not s.image %}solo{% endif %}">
+      {% if s.image %}<img src="{{ s.image.url }}" alt="{{ s.title|tr:lang }}" loading="lazy">{% endif %}
+      <div class="c-card"><h4>{{ s.title|tr:lang }}</h4>{% if s.text|tr:lang %}<p>{{ s.text|tr:lang|linebreaksbr }}</p>{% endif %}</div>
+    </div>{% endfor %}</div>
+</div></section>
+{% endif %}
+
+{% if gallery %}
+<section class="c-sec c-gal" id="gallery" {% if event.cover_image_2 %}style="background-image:url('{{ event.cover_image_2.url }}')"{% elif event.cover_image %}style="background-image:url('{{ event.cover_image.url }}')"{% endif %}><div class="c-wrap">
+  <div class="c-title rv"><h6>{% translate "Galerie" %}</h6><h2>{% translate "Nos photos" %}</h2><i class="c-heart" style="color:#fff">♥</i></div>
+  <div class="c-grid">{% for g in gallery %}<button class="c-item rv" type="button" data-i="{{ forloop.counter0 }}" aria-label="{% translate 'Nos photos' %} {{ forloop.counter }}"><img src="{{ g.image.url }}" alt="" loading="lazy"></button>{% endfor %}</div>
+</div></section>
+<div class="c-lb" id="cLb" role="dialog" aria-modal="true"><button class="x" type="button" aria-label="{% translate 'Fermer' %}">×</button><button class="p" type="button" aria-label="‹">‹</button><img alt=""><button class="n" type="button" aria-label="›">›</button></div>
+{% endif %}
+
+{% if venues %}
+<section class="c-sec" id="events"><div class="c-wrap">
+  <div class="c-title rv"><h6>{% translate "Programme" %}</h6><h2>{% translate "Le programme de la journée" %}</h2><i class="c-heart">♥</i></div>
+  <div class="c-evs">{% for v in venues %}<div class="c-ev rv">{% if v.image %}<img src="{{ v.image.url }}" alt="" loading="lazy">{% endif %}<h4>{{ v.name|tr:lang }}</h4>{% if v.address %}<p>{{ v.address }}</p>{% endif %}<p>{{ v.start|time:"H:i" }}{% if v.end %} – {{ v.end|time:"H:i" }}{% endif %}</p><p><a href="{% url 'map' event.slug %}?lang={{ lang }}">🧭 {% translate "Y aller" %}</a></p></div>{% endfor %}</div>
+</div></section>
+{% endif %}
+
+{% if song %}
+<section class="c-sec" id="music" style="padding-top:0"><div class="c-wrap">
+  <div class="c-title rv"><h6>{% translate "Musique" %}</h6><h2>{% translate "La chanson de la fête" %}</h2><i class="c-heart">♥</i></div>
+  <div class="c-music rv"><div class="vinyl" aria-hidden="true"></div><div style="flex:1;min-width:150px"><b style="font-size:1.3rem">{{ song.title }}</b><div style="color:var(--muted);font-style:italic">{{ song.artist }}</div>{% if song.audio %}<audio controls preload="none" src="{{ song.audio }}" style="width:100%;margin-top:6px"></audio>{% endif %}</div>
+  {% if song.youtube %}<a class="c-stream" href="{{ song.youtube }}" target="_blank" rel="noopener">▶ {% translate "Streamer sur" %} YouTube</a>{% endif %}{% if song.spotify %}<a class="c-stream" href="{{ song.spotify }}" target="_blank" rel="noopener">{% translate "Streamer sur" %} Spotify</a>{% endif %}</div>
+</div></section>
+{% endif %}
+
+<section class="c-sec" id="rsvp" style="background:var(--cream)"><div class="c-wrap">
+  <div class="c-title rv"><h6>RSVP</h6><h2>{% translate "Serez-vous des nôtres ?" %}</h2><i class="c-heart">♥</i></div>
+  <div class="c-btns rv"><a class="c-btn" href="{% url 'rsvp' event.slug %}?lang={{ lang }}"><span>{% translate "Répondre à l’invitation" %}</span></a>
+  {% if 'cadeaux' in event.services %}<a class="c-btn ghost" href="{% url 'gift_list' event.slug %}?lang={{ lang }}"><span>🎁 {% translate "Liste de cadeaux" %}</span></a>{% endif %}
+  {% if 'mur' in event.services %}<a class="c-btn ghost" href="{% url 'wall' event.slug %}?lang={{ lang }}"><span>💬 {% translate "Mur des vœux" %}</span></a>{% endif %}</div>
+</div></section>
+
+<footer class="c-foot">
+  <h2>{% translate "Merci" %}</h2><i class="c-heart" style="color:#fff">♥</i>
+  <p style="margin-top:1rem;font-size:1rem">{% translate "Merci d’être à nos côtés" %}</p>
+  {% if event.social_links %}<div class="c-soc">{% for k, u in event.social_links.items %}{% if u %}<a href="{{ u }}" target="_blank" rel="noopener" title="{{ k }}">{{ k|slice:":2" }}</a>{% endif %}{% endfor %}</div>{% endif %}
+  <p>© Miel Production</p>
+</footer>
+<a class="c-top" id="cTop" href="#home" aria-label="{% translate 'Retour en haut' %}">⌃</a>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  // menu mobile
+  var nav=document.getElementById('cNav'),bg=document.getElementById('cBurger');
+  bg.onclick=function(){var o=nav.classList.toggle('open');bg.setAttribute('aria-expanded',o)};
+  // défilement doux avec décalage de la barre, et fermeture du menu
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){a.addEventListener('click',function(e){var t=document.querySelector(a.getAttribute('href'));if(!t)return;e.preventDefault();nav.classList.remove('open');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-64,behavior:'smooth'})})});
+  // diaporama de l'en-tête
+  var sl=document.querySelectorAll('.c-slide'),k=0;if(sl.length>1)setInterval(function(){sl[k].classList.remove('on');k=(k+1)%sl.length;sl[k].classList.add('on')},6000);
+  // apparition au défilement
+  var io='IntersectionObserver' in window?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -60px'}):null;
+  document.querySelectorAll('.rv').forEach(function(el){io?io.observe(el):el.classList.add('in')});
+  // bouton retour en haut
+  var top=document.getElementById('cTop');addEventListener('scroll',function(){top.classList.toggle('on',scrollY>600)},{passive:true});
+  // galerie plein écran
+  var lb=document.getElementById('cLb');if(lb){var items=[].slice.call(document.querySelectorAll('.c-item img')).map(function(i){return i.src}),cur=0,img=lb.querySelector('img');
+    var show=function(i){cur=(i+items.length)%items.length;img.src=items[cur];lb.classList.add('on')};
+    document.querySelectorAll('.c-item').forEach(function(b){b.onclick=function(){show(+b.dataset.i)}});
+    lb.querySelector('.x').onclick=function(){lb.classList.remove('on')};lb.querySelector('.p').onclick=function(){show(cur-1)};lb.querySelector('.n').onclick=function(){show(cur+1)};
+    lb.onclick=function(e){if(e.target===lb)lb.classList.remove('on')};
+    addEventListener('keydown',function(e){if(!lb.classList.contains('on'))return;if(e.key==='Escape')lb.classList.remove('on');if(e.key==='ArrowLeft')show(cur-1);if(e.key==='ArrowRight')show(cur+1)})}
+  // curseur personnalisé (ordinateur)
+  if(matchMedia('(hover:hover) and (min-width:769px)').matches){var d=document.querySelector('.c-dot'),r=document.querySelector('.c-ring'),mx=0,my=0,rx=0,ry=0;
+    document.body.style.cursor='none';
+    addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;d.style.transform='translate('+mx+'px,'+my+'px) translate(-50%,-50%)'});
+    (function loop(){rx+=(mx-rx)*.18;ry+=(my-ry)*.18;r.style.transform='translate('+rx+'px,'+ry+'px) translate(-50%,-50%)';requestAnimationFrame(loop)})();
+    document.querySelectorAll('a,button,input,textarea,select,.c-item').forEach(function(el){el.addEventListener('mouseenter',function(){document.body.classList.add('c-grow')});el.addEventListener('mouseleave',function(){document.body.classList.remove('c-grow')})})}
+})();
+</script>
+{% endblock %}
