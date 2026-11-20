@@ -241,3 +241,46 @@ class SiteCTests(TestCase):
         self.assertEqual(r.status_code, 200)
         ev.refresh_from_db()
         self.assertEqual(ev.couple["p1"]["text"], {"fr": "x"})
+
+
+class PlanAndBackgroundTests(TestCase):
+    def setUp(self):
+        from events.services.defaults import seed_event_defaults
+        self.u = User.objects.create_user("p", "p@x.co", "pw-12345678")
+        self.ev = Event.objects.create(owner=self.u, type="mariage", title={"fr": "Ruth & Christian"}, languages=["fr"], services=["carte", "tables", "site"])
+        seed_event_defaults(self.ev)
+        cat = self.ev.categories.filter(is_honor=False).first()
+        for i in range(20):
+            Guest.objects.create(event=self.ev, first_name=f"Invité{i}", last_name="Test", attending=True, category=cat)
+        self.client.force_login(self.u)
+
+    def test_plan_downloads_and_themes(self):
+        from events.services import seating
+        seating.assign(self.ev, {"tables": 3, "capacity": 8, "specials": []})
+        r = self.client.post(f"/api/e/{self.ev.slug}/tables/theme/", data='{"theme": "vertus_versets"}', content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual([t["name"] for t in r.json()["tables"]], ["Amour", "Foi", "Complicité"])
+        # les noms et versets restent après une nouvelle répartition
+        seating.assign(self.ev, {"tables": 3, "capacity": 8, "specials": []})
+        self.assertEqual(self.ev.tables.first().quote_ref, "1 Corinthiens 13:8")
+        for style in ("jardin", "nuit", "minimal"):
+            r = self.client.get(f"/app/e/{self.ev.slug}/plan.svg?style={style}")
+            self.assertEqual(r["Content-Type"], "image/svg+xml; charset=utf-8")
+            body = r.content.decode()
+            self.assertIn("PLAN DE TABLE", body)
+            self.assertIn("Invité0 Test", body)
+            self.assertIn("1 CORINTHIENS 13:8", body)
+        r = self.client.get(f"/app/e/{self.ev.slug}/plan.pdf?style=nuit")
+        self.assertEqual(b"".join(r.streaming_content)[:4], b"%PDF")
+
+    def test_site_background(self):
+        self.ev.site_template = "C"
+        self.ev.save()
+        r = self.client.patch(f"/api/e/{self.ev.slug}/", data='{"site_bg": {"mode": "gradient", "c1": "#123456", "c2": "javascript:x", "veil": 200, "scope": "site"}}', content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        self.ev.refresh_from_db()
+        self.assertEqual(self.ev.site_bg["c2"], "#e7d4ad")
+        self.assertEqual(self.ev.site_bg["veil"], 85)
+        self.assertContains(self.client.get(f"/e/{self.ev.slug}/"), "linear-gradient(160deg,#123456,#e7d4ad)")
+        self.assertNotContains(self.client.get(f"/e/{self.ev.slug}/rsvp/"), "160deg,#123456")  # seulement le site
+        self.assertNotContains(self.client.get("/connexion/"), "#123456")

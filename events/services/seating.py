@@ -178,11 +178,22 @@ def assign(event, config=None):
     plan, unplaced = compute_plan(event, ps, config)
     event.table_config = config
     event.save(update_fields=["table_config"])
+    # On garde les noms et citations déjà choisis : tables standard dans l'ordre, tables particulières par nom.
+    old = list(event.tables.all())
+    old_std = [(t.name, t.quote, t.quote_ref) for t in old if t.kind == "std"]
+    old_named = {(t.kind, t.name): (t.quote, t.quote_ref) for t in old if t.kind != "std" and t.name}
+    rows, si = [], 0
+    for i, t in enumerate(plan):
+        name, quote, ref = t["name"], "", ""
+        if t["kind"] == "std" and not name:
+            if si < len(old_std):
+                name, quote, ref = old_std[si]
+            si += 1
+        else:
+            quote, ref = old_named.get((t["kind"], name), ("", ""))
+        rows.append(Table(event=event, order=i, name=name, capacity=t["capacity"], kind=t["kind"], seats=t["seats"], quote=quote, quote_ref=ref))
     event.tables.all().delete()
-    Table.objects.bulk_create([
-        Table(event=event, order=i, name=t["name"], capacity=t["capacity"], kind=t["kind"], seats=t["seats"])
-        for i, t in enumerate(plan)
-    ])
+    Table.objects.bulk_create(rows)
     return unplaced
 
 

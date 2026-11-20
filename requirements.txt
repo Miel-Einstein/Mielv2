@@ -4,7 +4,7 @@ channels-redis==4.2.1
 uvicorn[standard]==0.32.1
 celery==5.4.0
 redis==5.2.1
-reportlab==4.2.5
+reportlab==5.1.0
 qrcode==8.0
 pillow==11.0.0
 whitenoise==6.8.2
@@ -12,3 +12,4 @@ dj-database-url==2.3.0
 psycopg[binary]==3.2.3
 requests==2.32.3
 polib==1.2.0
+svglib==2.4.0

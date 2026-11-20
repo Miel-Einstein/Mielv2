@@ -66,7 +66,7 @@
     if (TB.a >= n) TB.a = 0; if (TB.b >= n || TB.b === TB.a) TB.b = (TB.a + 1) % n;
     const selName = TB.sel ? (TB.sel.u ? (P.persons[TB.sel.u] || {}).name : (P.persons[P.tables[TB.sel.t].seats[TB.sel.s]] || {}).name) : '';
     main.innerHTML = '<div class="wrap">' +
-      '<div class="tb-toolbar">' + (!wide ? '<button type="button" class="btn sm" id="tbDrawer">☰ Tables</button>' : '') + '<button type="button" class="btn gold sm" id="tbAuto">↻ Répartir automatiquement</button><button type="button" class="btn sm" id="tbUndo" ' + (TB.undo.length ? '' : 'disabled') + '>↩ Annuler</button><button type="button" class="btn sm" id="tbView">' + (TB.list ? '⭕ Vue table' : '☰ Vue liste') + '</button>' + (innerWidth >= 700 ? '<button type="button" class="btn sm ' + (TB.two ? 'gold' : '') + '" id="tbTwo">⧉ Deux tables côte à côte</button>' : '') + '<button type="button" class="btn sm ' + (P.unplaced.length ? 'danger' : '') + '" id="tbUn">Non placés : ' + P.unplaced.length + '</button><button type="button" class="btn sm" id="tbAdd">+ Table</button><a class="btn sm ghost" href="/app/e/' + EV.slug + '/plan.pdf?lang=' + L1 + '">⤓ PDF</a><a class="btn sm ghost" href="/app/e/' + EV.slug + '/plan.pdf?lang=' + L1 + '&names=1">⤓ PDF noms</a></div>' +
+      '<div class="tb-toolbar">' + (!wide ? '<button type="button" class="btn sm" id="tbDrawer">☰ Tables</button>' : '') + '<button type="button" class="btn gold sm" id="tbAuto">↻ Répartir automatiquement</button><button type="button" class="btn sm" id="tbUndo" ' + (TB.undo.length ? '' : 'disabled') + '>↩ Annuler</button><button type="button" class="btn sm" id="tbView">' + (TB.list ? '⭕ Vue table' : '☰ Vue liste') + '</button>' + (innerWidth >= 700 ? '<button type="button" class="btn sm ' + (TB.two ? 'gold' : '') + '" id="tbTwo">⧉ Deux tables côte à côte</button>' : '') + '<button type="button" class="btn sm ' + (P.unplaced.length ? 'danger' : '') + '" id="tbUn">Non placés : ' + P.unplaced.length + '</button><button type="button" class="btn sm" id="tbAdd">+ Table</button><button type="button" class="btn sm" id="tbTheme">🏷 Noms des tables</button><button type="button" class="btn sm gold" id="tbDl">⤓ Télécharger le plan</button></div>' +
       '<div class="tb-layout"><aside class="tb-side ' + (TB.drawer ? 'open' : '') + '" id="tbSide"><div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><b>' + n + ' tables</b>' + (!wide ? '<button type="button" class="icon-btn" id="tbClose" aria-label="Fermer">✕</button>' : '') + '</div><input class="inp" id="tbSearch" placeholder="Rechercher un invité…" style="margin-bottom:8px"><div id="tbHits"></div><div class="tlist">' +
       P.tables.map((t, i) => { const o = t.seats.filter(Boolean).length; return '<div class="titem ' + (i === TB.a ? 'on' : '') + '"><button type="button" class="titem" style="padding:0;border:none" data-ta="' + i + '"><span class="num">' + (i + 1) + '</span><span class="meta">' + (t.kind === 'kids' ? '👶 ' : t.kind === 'honor' ? '👑 ' : '') + esc(label(t, i)) + '</span><span class="pill ' + (o === t.capacity ? 'ok' : '') + '">' + o + '/' + t.capacity + '</span></button><span class="mv"><button type="button" class="icon-btn" style="width:28px;height:22px;border:none" data-mv="' + i + '" data-d="-1" aria-label="Monter">▲</button><button type="button" class="icon-btn" style="width:28px;height:22px;border:none" data-mv="' + i + '" data-d="1" aria-label="Descendre">▼</button></span></div>'; }).join('') +
       '</div></div></aside><div><div class="tables-area ' + (TB.two ? 'two' : '') + '">' + tableCard(TB.a) + (TB.two ? tableCard(TB.b) : '') + '</div>' +
@@ -108,7 +108,7 @@
         try { P = await api(BASE + 'tables/auto/', { method: 'POST', json: { config: cfg } }); }
         catch (e) { toast(e.message); return; }
         TB.sel = null; TB.a = 0; render();
-        toast(P.last_unplaced ? 'Répartition faite : ' + P.last_unplaced + ' personne(s) sans place, ajoute des tables ou des places' : 'Répartition automatique terminée ✦', TB.undo.length ? undo : null);
+        afterAuto(P.last_unplaced || 0);
       };
     };
     draw();
@@ -116,7 +116,7 @@
 
   function bind() {
     const on = (id, fn) => { const el = $('#' + id); if (el) el.onclick = fn; };
-    on('tbAuto', auto); on('tbUndo', undo);
+    on('tbAuto', auto); on('tbUndo', undo); on('tbDl', () => openDownload()); on('tbTheme', openThemes);
     on('tbView', () => { TB.list = !TB.list; render(); });
     on('tbTwo', () => { TB.two = !TB.two; render(); });
     on('tbDrawer', () => { TB.drawer = true; render(); });
@@ -195,10 +195,72 @@
     const sh = openSheet('<h3>Invités non placés (' + un.length + ')</h3>' + (un.length ? '<p class="muted" style="margin-top:0">' + (target ? 'Touchez un invité pour l\'asseoir au siège ' + (target.s + 1) + '.' : 'Touchez un invité, puis un siège libre.') + '</p><div class="unplaced">' + un.map(p => '<button type="button" class="chip" data-up="' + esc(p.key) + '"><span style="width:9px;height:9px;border-radius:50%;background:' + ((catOf(p.cat) || {}).color || '#999') + '"></span>' + esc(p.name) + (p.type === 'enfant' ? ' · ' + p.age + ' ans' : '') + '</button>').join('') + '</div>' : '<p class="muted">Tout le monde a une place 🎉</p>'));
     $$('[data-up]', sh).forEach(b => b.onclick = () => { closeSheet(); if (target) doSwap({ u: b.dataset.up }, target); else { TB.sel = { u: b.dataset.up }; render(); } });
   }
+
+  // ---------- après la répartition : proposer le téléchargement
+  function afterAuto(lost) {
+    const sh = openSheet('<h3>✦ Répartition terminée</h3><p class="muted" style="margin-top:0">' + (lost ? '<b style="color:var(--bad)">' + lost + ' personne(s) sans place</b> : ajoute des tables ou des places, puis relance la répartition.' : 'Tout le monde a une place. Tu peux encore échanger des invités à la main.') + '</p>' +
+      '<div class="grid"><button type="button" class="btn gold" id="aaDl">⤓ Télécharger le plan de table</button><button type="button" class="btn" id="aaTh">🏷 Donner un nom aux tables</button><button type="button" class="btn ghost" id="aaNo">Voir les tables</button></div>');
+    $('#aaDl', sh).onclick = () => openDownload(); $('#aaTh', sh).onclick = openThemes; $('#aaNo', sh).onclick = closeSheet;
+  }
+
+  // ---------- noms des tables (thèmes)
+  const THEMES = [['vertus_versets', '🕊️', 'Vertus & versets', 'Amour, Foi, Grâce… avec un verset'], ['vertus', '💛', 'Vertus', 'Amour, Foi, Grâce…'], ['villes', '🏙️', 'Villes', 'Rome, Venise, Kinshasa…'], ['fleurs', '🌸', 'Fleurs', 'Rose, Pivoine, Jasmin…'], ['pierres', '💎', 'Pierres précieuses', 'Diamant, Saphir, Perle…'], ['numeros', '🔢', 'Numéros seulement', 'Table 1, Table 2…']];
+  function openThemes() {
+    const sh = openSheet('<h3>Noms des tables</h3><p class="muted" style="margin-top:0">Le thème nomme les tables standard dans l\'ordre. La table d\'honneur et celle des enfants gardent leur nom. Tu peux ensuite modifier chaque table (✎).</p><div class="grid">' +
+      THEMES.map(([k, ic, n, d]) => '<button type="button" class="btn" style="justify-content:flex-start;text-align:left;height:auto;padding:10px 14px" data-th="' + k + '"><span style="font-size:22px;margin-right:6px">' + ic + '</span><span><b>' + n + '</b><br><small class="muted">' + d + '</small></span></button>').join('') + '</div>');
+    $$('[data-th]', sh).forEach(b => b.onclick = async () => {
+      if (P.tables.some(t => t.kind === 'std' && t.name) && !confirmBox) { confirmBox = true; toast('Les noms actuels des tables standard seront remplacés. Touche encore pour confirmer.'); setTimeout(() => confirmBox = false, 4000); return; }
+      confirmBox = false; snap();
+      try { P = await api(BASE + 'tables/theme/', { method: 'POST', json: { theme: b.dataset.th } }); } catch (e) { return toast(e.message); }
+      closeSheet(); render(); toast('Noms des tables mis à jour ✦', undo);
+    });
+  }
+  let confirmBox = false;
+
+  // ---------- téléchargement du plan (SVG, PDF, PNG)
+  const STYLES = [['jardin', 'Jardin', 'Ivoire, feuillages et or'], ['nuit', 'Nuit dorée', 'Bleu nuit et or'], ['minimal', 'Minimal', 'Noir et blanc, peu d\'encre']];
+  const DL = { style: 'jardin', photo: true, quotes: true, lang: L1 };
+  const planURL = (fmt, extra) => '/app/e/' + EV.slug + '/plan.' + fmt + '?style=' + DL.style + '&lang=' + DL.lang + '&photo=' + (DL.photo ? 1 : 0) + '&quotes=' + (DL.quotes ? 1 : 0) + (extra || '');
+  function openDownload() {
+    const draw = () => {
+      const sh = openSheet('<h3>Télécharger le plan de table</h3><p class="muted" style="margin-top:0">Choisis un modèle, puis un format.</p>' +
+        '<div class="dl-styles">' + STYLES.map(([k, n, d]) => '<button type="button" class="dl-style' + (DL.style === k ? ' on' : '') + '" data-st="' + k + '"><span class="pv"><img alt="" loading="lazy" src="/app/e/' + EV.slug + '/plan.svg?inline=1&photo=0&style=' + k + '&lang=' + DL.lang + '"></span><b>' + n + '</b><small>' + d + '</small></button>').join('') + '</div>' +
+        '<div class="row" style="margin:12px 0"><label class="chk"><input type="checkbox" id="dlPh" ' + (DL.photo ? 'checked' : '') + '> Photo de couverture</label><label class="chk"><input type="checkbox" id="dlQ" ' + (DL.quotes ? 'checked' : '') + '> Citations et versets</label>' +
+        (EV.languages.length > 1 ? '<select class="inp" id="dlL" style="max-width:160px">' + EV.languages.map(l => '<option value="' + l + '" ' + (DL.lang === l ? 'selected' : '') + '>' + ({ fr: '🇫🇷 Français', en: '🇬🇧 English', it: '🇮🇹 Italiano', ln: '🇨🇬 Lingala' })[l] + '</option>').join('') + '</select>' : '') + '</div>' +
+        '<div class="dl-formats"><a class="btn gold" id="dlSvg" href="' + planURL('svg') + '"><b>SVG</b><small>Affiche nette à toutes les tailles, pour l\'imprimeur</small></a>' +
+        '<a class="btn" id="dlPdf" href="' + planURL('pdf') + '"><b>PDF A4</b><small>Pages à imprimer, aucune table coupée</small></a>' +
+        '<button type="button" class="btn" id="dlPng"><b>PNG</b><small>Image à partager sur WhatsApp</small></button></div>');
+      $$('[data-st]', sh).forEach(b => b.onclick = () => { DL.style = b.dataset.st; draw(); });
+      $('#dlPh', sh).onchange = e => { DL.photo = e.target.checked; draw(); };
+      $('#dlQ', sh).onchange = e => { DL.quotes = e.target.checked; draw(); };
+      const ls = $('#dlL', sh); if (ls) ls.onchange = e => { DL.lang = e.target.value; draw(); };
+      $('#dlPng', sh).onclick = () => downloadPNG($('#dlPng', sh));
+    };
+    draw();
+  }
+  async function downloadPNG(btn) {
+    btn.disabled = true; const old = btn.innerHTML; btn.innerHTML = '<b>Préparation…</b>';
+    try {
+      const r = await fetch(planURL('svg', '&inline=1'), { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('Erreur ' + r.status);
+      const txt = (await r.text()).replace(/<style>@import[^<]*<\/style>/, '');
+      const w = +(/width="(\d+)"/.exec(txt) || [0, 1578])[1], h = +(/height="(\d+)"/.exec(txt) || [0, 2000])[1];
+      const url = URL.createObjectURL(new Blob([txt], { type: 'image/svg+xml' }));
+      const img = new Image(); img.decoding = 'async';
+      await new Promise((ok, ko) => { img.onload = ok; img.onerror = () => ko(new Error('Image illisible')); img.src = url; });
+      const scale = Math.max(.5, Math.min(2, Math.sqrt(16e6 / (w * h)))); // limite des téléphones
+      const c = document.createElement('canvas'); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      const blob = await new Promise(ok => c.toBlob(ok, 'image/png'));
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'plan-de-table-' + EV.slug + '-' + DL.style + '.png'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Image téléchargée ✦');
+    } catch (e) { toast('Impossible de créer l\'image : ' + e.message); }
+    btn.disabled = false; btn.innerHTML = old;
+  }
   function editTable(ti) {
     const t = P.tables[ti];
-    const sh = openSheet('<h3>' + esc(label(t, ti)) + '</h3><div class="grid"><label class="f">Nom (facultatif)<input class="inp" id="etN" value="' + esc(t.name) + '" placeholder="ex. Table d\'honneur, Famille Mbala"></label><div class="row"><label class="f" style="flex:1">Places<input class="inp" type="number" min="1" max="30" id="etC" value="' + t.capacity + '"></label><label class="f" style="flex:1">Forme<select class="inp" id="etS"><option value="round" ' + (t.shape === 'round' ? 'selected' : '') + '>Ronde</option><option value="rect" ' + (t.shape === 'rect' ? 'selected' : '') + '>Rectangulaire</option></select></label><label class="f" style="flex:1">Type<select class="inp" id="etK"><option value="std">Standard</option><option value="honor" ' + (t.kind === 'honor' ? 'selected' : '') + '>Table d\'honneur</option><option value="kids" ' + (t.kind === 'kids' ? 'selected' : '') + '>Table des enfants</option></select></label></div><div class="row"><button type="button" class="btn gold" id="etOk">Enregistrer</button><button type="button" class="btn danger" id="etDel">Supprimer la table</button></div><p class="hint">Si tu réduis les places ou supprimes la table, les invités concernés passent dans « non placés ».</p></div>');
-    $('#etOk', sh).onclick = () => { snap(); const cap = Math.max(1, Math.min(30, +$('#etC', sh).value || t.capacity)); t.name = $('#etN', sh).value.trim(); t.shape = $('#etS', sh).value; t.kind = $('#etK', sh).value; t.seats = (t.seats.concat(Array(30).fill(null))).slice(0, cap); t.capacity = cap; closeSheet(); persist(); };
+    const sh = openSheet('<h3>' + esc(label(t, ti)) + '</h3><div class="grid"><label class="f">Nom (facultatif)<input class="inp" id="etN" value="' + esc(t.name) + '" placeholder="ex. Amour, Rome, Famille Mbala"></label><div class="row"><label class="f" style="flex:3 1 220px">Citation ou verset (facultatif)<input class="inp" id="etQ" maxlength="200" value="' + esc(t.quote || '') + '" placeholder="ex. L\'amour ne périt jamais."></label><label class="f" style="flex:1 1 120px">Référence<input class="inp" id="etR" maxlength="60" value="' + esc(t.quote_ref || '') + '" placeholder="ex. 1 Co 13:8"></label></div><div class="row"><label class="f" style="flex:1">Places<input class="inp" type="number" min="1" max="30" id="etC" value="' + t.capacity + '"></label><label class="f" style="flex:1">Forme<select class="inp" id="etS"><option value="round" ' + (t.shape === 'round' ? 'selected' : '') + '>Ronde</option><option value="rect" ' + (t.shape === 'rect' ? 'selected' : '') + '>Rectangulaire</option></select></label><label class="f" style="flex:1">Type<select class="inp" id="etK"><option value="std">Standard</option><option value="honor" ' + (t.kind === 'honor' ? 'selected' : '') + '>Table d\'honneur</option><option value="kids" ' + (t.kind === 'kids' ? 'selected' : '') + '>Table des enfants</option></select></label></div><div class="row"><button type="button" class="btn gold" id="etOk">Enregistrer</button><button type="button" class="btn danger" id="etDel">Supprimer la table</button></div><p class="hint">Si tu réduis les places ou supprimes la table, les invités concernés passent dans « non placés ».</p></div>');
+    $('#etOk', sh).onclick = () => { snap(); const cap = Math.max(1, Math.min(30, +$('#etC', sh).value || t.capacity)); t.name = $('#etN', sh).value.trim(); t.quote = $('#etQ', sh).value.trim(); t.quote_ref = $('#etR', sh).value.trim(); t.shape = $('#etS', sh).value; t.kind = $('#etK', sh).value; t.seats = (t.seats.concat(Array(30).fill(null))).slice(0, cap); t.capacity = cap; closeSheet(); persist(); };
     $('#etDel', sh).onclick = () => { snap(); P.tables.splice(ti, 1); closeSheet(); persist(); toast('Table supprimée', undo); };
   }
   window.addEventListener('miel:event-changed', () => api(BASE + 'tables/').then(d => { P = d; render(); }));

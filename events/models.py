@@ -88,6 +88,9 @@ class Event(models.Model):
     cover_image_2 = models.ImageField(upload_to="events/covers/", blank=True)
     # Section « Les mariés » (modèle C) : {"p1": {"name": "", "text": {lang: ...}}, "p2": {...}}
     couple = models.JSONField(default=dict, blank=True)
+    # Fond des pages du site : {"mode": default|color|gradient|image, "c1", "c2", "veil": 0-85, "tone": light|dark, "scope": site|all}
+    site_bg = models.JSONField(default=dict, blank=True)
+    site_bg_image = models.ImageField(upload_to="events/backgrounds/", blank=True)
     partner1_image = models.ImageField(upload_to="events/couple/", blank=True)
     partner2_image = models.ImageField(upload_to="events/couple/", blank=True)
     # Enfants
@@ -388,6 +391,8 @@ class Table(models.Model):
     kind = models.CharField(max_length=6, choices=KINDS, default="std")
     shape = models.CharField(max_length=6, choices=SHAPES, default="round")
     seats = models.JSONField(default=list, help_text="Liste de clés de personne (ou null), longueur = capacité")
+    quote = models.CharField(max_length=200, blank=True, help_text="Citation ou verset affiché sur le plan")
+    quote_ref = models.CharField(max_length=60, blank=True)
 
     class Meta:
         ordering = ["order", "id"]

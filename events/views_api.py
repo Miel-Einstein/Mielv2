@@ -94,7 +94,7 @@ def identity(event, token):
 EVENT_FIELDS = {"type", "title", "subtitle", "date", "time", "timezone", "languages", "services", "card_template",
                 "site_template", "kids_invited", "kids_table", "age_with_parents", "age_kids_max", "baby_chair",
                 "supervisor_name", "max_companions", "ask_languages", "conversation_languages", "budget", "currency",
-                "guest_target", "song", "telegram_chat_id", "social_links", "couple"}
+                "guest_target", "song", "telegram_chat_id", "social_links", "couple", "site_bg"}
 
 
 @require_http_methods(["GET", "PATCH", "POST"])
@@ -115,6 +115,14 @@ def event_detail(request, event):
             if v not in ("A", "B", "C"):
                 return err("Modèle de site inconnu")
             event.site_template = v
+        elif k == "site_bg":
+            if not isinstance(v, dict):
+                return err("Format invalide")
+            hexok = lambda c: isinstance(c, str) and len(c) == 7 and c[0] == "#" and all(x in "0123456789abcdefABCDEF" for x in c[1:])
+            mode = v.get("mode") if v.get("mode") in ("default", "color", "gradient", "image") else "default"
+            event.site_bg = {"mode": mode, "c1": v.get("c1") if hexok(v.get("c1")) else "#faf6ef", "c2": v.get("c2") if hexok(v.get("c2")) else "#e7d4ad",
+                             "veil": max(0, min(85, int(v.get("veil") or 0))), "tone": "dark" if v.get("tone") == "dark" else "light",
+                             "scope": "all" if v.get("scope") == "all" else "site"}
         elif k == "couple":
             if not isinstance(v, dict):
                 return err("Format invalide")
@@ -158,7 +166,7 @@ def event_detail(request, event):
 def event_upload(request, event):
     field = request.POST.get("field")
     f = request.FILES.get("file")
-    if field not in ("cover_image", "cover_image_2", "partner1_image", "partner2_image") or not f:
+    if field not in ("cover_image", "cover_image_2", "partner1_image", "partner2_image", "site_bg_image") or not f:
         return err("Fichier manquant")
     setattr(event, field, f)
     event.save()
@@ -231,6 +239,17 @@ def story_image(request, event, pk):
     s.image = request.FILES["file"]
     s.save()
     return ok(S.story_data(s))
+
+
+@require_http_methods(["POST"])
+@owner_api
+def tables_theme(request, event):
+    from events.services.table_themes import apply_theme
+    try:
+        apply_theme(event, body(request).get("theme"))
+    except KeyError:
+        return err("Thème inconnu")
+    return ok(tables_payload(event))
 
 
 @require_http_methods(["GET", "POST"])
@@ -435,7 +454,7 @@ def tables_payload(event):
     ps = seating.persons(event)
     placed = {k for tb in event.tables.all() for k in tb.seats if k}
     return {
-        "tables": [{"id": tb.id, "name": tb.name, "capacity": tb.capacity, "kind": tb.kind, "shape": tb.shape, "seats": tb.seats} for tb in event.tables.all()],
+        "tables": [{"id": tb.id, "name": tb.name, "capacity": tb.capacity, "kind": tb.kind, "shape": tb.shape, "seats": tb.seats, "quote": tb.quote, "quote_ref": tb.quote_ref} for tb in event.tables.all()],
         "persons": {p.key: p.as_dict() for p in ps},
         "unplaced": [p.key for p in ps if p.key not in placed],
         "categories": [S.category_data(c) for c in event.categories.all()],
@@ -465,6 +484,7 @@ def tables(request, event):
                 tb = event.tables.filter(id=it.get("id")).first() if it.get("id") else None
                 tb = tb or Table(event=event)
                 tb.order, tb.name, tb.capacity, tb.seats = i, (it.get("name") or "")[:120], cap, seats
+                tb.quote, tb.quote_ref = (it.get("quote") or "")[:200], (it.get("quote_ref") or "")[:60]
                 tb.kind = it.get("kind") if it.get("kind") in ("std", "honor", "kids") else "std"
                 tb.shape = it.get("shape") if it.get("shape") in ("round", "rect") else "round"
                 tb.save()

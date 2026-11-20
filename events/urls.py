@@ -16,6 +16,7 @@ urlpatterns = [
     path("app/e/<slug:slug>/tables/", views.tables_page, name="tables"),
     path("app/e/<slug:slug>/cadeaux/", views.gifts_manager, name="gifts_manager"),
     path("app/e/<slug:slug>/plan.pdf", views.plan_pdf, name="plan_pdf"),
+    path("app/e/<slug:slug>/plan.svg", views.plan_svg, name="plan_svg"),
     # invités
     path("i/<str:token>/", views.share_link, name="share_link"),
     path("e/<slug:slug>/", views.event_home, name="event_home"),
@@ -46,6 +47,7 @@ urlpatterns = [
     path("api/e/<slug:slug>/moments/<int:pk>/launch/", api.moment_launch),
     path("api/e/<slug:slug>/tables/", api.tables),
     path("api/e/<slug:slug>/tables/auto/", api.tables_auto),
+    path("api/e/<slug:slug>/tables/theme/", api.tables_theme),
     path("api/e/<slug:slug>/guests/", api.guests),
     path("api/e/<slug:slug>/guests/<int:pk>/", api.guest_detail),
     path("api/e/<slug:slug>/dashboard/", api.dashboard),

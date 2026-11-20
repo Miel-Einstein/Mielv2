@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import translation
@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 from events import serializers as S
 from events.models import EventType, Event, Reaction, TermsAcceptance
 from events.services import pdf, seating
+from events.services import plan_svg as plan_render
 from events.services.defaults import seed_event_defaults
 
 LANG_COOKIE = "miel_lang"
@@ -104,12 +105,30 @@ def gifts_manager(request, slug):
     return render(request, "events/gifts_manager.html", _organizer_ctx(owned(request, slug), "gifts"))
 
 
+def _plan_opts(request, event):
+    lang = request.GET.get("lang") if request.GET.get("lang") in (event.languages or ["fr"]) else (event.languages or ["fr"])[0]
+    style = request.GET.get("style") if request.GET.get("style") in plan_render.STYLES else "jardin"
+    return {"style": style, "lang": lang, "photo": request.GET.get("photo", "1") == "1", "quotes": request.GET.get("quotes", "1") == "1"}
+
+
 @login_required
 def plan_pdf(request, slug):
+    """Plan de table en PDF A4 (plusieurs pages, une table n'est jamais coupée)."""
     event = owned(request, slug)
-    lang = request.GET.get("lang", "fr")
-    buf = pdf.plan_pdf(event, lang, names_only=request.GET.get("names") == "1")
-    return FileResponse(buf, as_attachment=True, filename=f"plan-de-table-{event.slug}.pdf")
+    o = _plan_opts(request, event)
+    buf = plan_render.render_pdf(event, **o)
+    return FileResponse(buf, as_attachment=request.GET.get("inline") != "1", filename=f"plan-de-table-{event.slug}-{o['style']}.pdf")
+
+
+@login_required
+def plan_svg(request, slug):
+    """Plan de table en SVG : une grande affiche, nette à toutes les tailles (impression, écran, imprimeur)."""
+    event = owned(request, slug)
+    o = _plan_opts(request, event)
+    resp = HttpResponse(plan_render.render_svg(event, **o), content_type="image/svg+xml; charset=utf-8")
+    if request.GET.get("inline") != "1":
+        resp["Content-Disposition"] = f'attachment; filename="plan-de-table-{event.slug}-{o["style"]}.svg"'
+    return resp
 
 
 # ---------------------------------------------------------------- invités
@@ -124,12 +143,41 @@ def pick_lang(request, event):
     return lang
 
 
+BG_PAGES_SITE = {"events/site_A.html", "events/site_B.html", "events/site_C.html"}
+BG_PAGES_ALL = BG_PAGES_SITE | {"events/rsvp.html", "events/wall.html", "events/gift_list.html", "events/map.html"}
+
+
+def site_bg_css(event, template):
+    """CSS du fond choisi par l'organisateur (couleur, dégradé ou photo, avec un voile pour la lisibilité)."""
+    bg = event.site_bg or {}
+    mode = bg.get("mode", "default")
+    pages = BG_PAGES_ALL if bg.get("scope") == "all" else BG_PAGES_SITE
+    if mode == "default" or template not in pages:
+        return ""
+    c1, c2 = bg.get("c1", "#faf6ef"), bg.get("c2", "#e7d4ad")
+    a = max(0, min(85, int(bg.get("veil", 0)))) / 100
+    v = f"rgba(255,255,255,{a})" if bg.get("tone") != "dark" else f"rgba(0,0,0,{a})"
+    veil = f"linear-gradient({v},{v})"
+    if mode == "color":
+        layers = f"{veil},{c1}"
+    elif mode == "gradient":
+        layers = f"{veil},linear-gradient(160deg,{c1},{c2})"
+    elif mode == "image" and event.site_bg_image:
+        url = event.site_bg_image.url.replace('"', "%22").replace("\\", "")
+        layers = f'{veil},url("{url}") center/cover no-repeat,{c1}'
+    else:
+        return ""
+    return (f"html{{background:{c1}}}body.guest-body{{background:transparent!important}}"
+            f"body.guest-body::after{{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:{layers}}}")
+
+
 def guest_render(request, template, event, ctx=None):
     lang = pick_lang(request, event)
     context = {"event": event, "lang": lang, "langs": event.languages,
                "song": S.song_data(event.song), "public": {"slug": event.slug, "lang": lang,
                "start_ms": S.event_data(event)["start_ms"], "title": event.title_in(lang)}}
     context.update(ctx or {})
+    context["site_bg_css"] = site_bg_css(event, template)
     resp = render(request, template, context)
     resp.set_cookie(LANG_COOKIE, lang, max_age=60 * 60 * 24 * 365, samesite="Lax")
     return resp

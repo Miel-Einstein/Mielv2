@@ -113,6 +113,36 @@
         b.innerHTML = '<div class="tiles-row">' + T.map(([k, n, d, c]) => '<button type="button" class="opt site-tile ' + (EV.site_template === k ? 'on' : '') + '" data-k="' + k + '"><span class="sw">' + c.map(x => '<i style="background:' + x + '"></i>').join('') + '</span><b>' + n + '</b><small>' + d + '</small></button>').join('') + '</div><div class="row center" style="margin-top:14px">' + T.map(([k, n]) => '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + EV.urls.site + '?tpl=' + k + '">👁 Voir « ' + n + ' » ↗</a>').join('') + '</div><div class="row center" style="margin-top:10px"><button class="btn gold" data-a="ok">Garder ce modèle</button></div>';
         $$('.opt', b).forEach(c => c.onclick = async () => { await patch({ site_template: c.dataset.k }); $$('.opt', b).forEach(x => x.classList.toggle('on', x === c)); });
         b.querySelector('[data-a=ok]').onclick = () => answer('Site « ' + ({ A: 'Botanical Editorial', B: 'Modern Romance', C: 'Luxe Romantique' })[EV.site_template] + ' »'); } },
+    { id: 'fond', label: 'Fond du site', show: () => has('site') && EV.type === 'mariage', ask: () => "Veux-tu changer le <b>fond</b> de ton site ? Garde celui du modèle, ou choisis une couleur, un dégradé ou une photo. Le voile rend le texte plus lisible.",
+      ui: b => { const bg = Object.assign({ mode: 'default', c1: '#faf6ef', c2: '#e7d4ad', veil: 0, tone: 'light', scope: 'site' }, EV.site_bg || {});
+        const PRESETS = [['#faf6ef', 'Ivoire'], ['#efe1c6', 'Champagne'], ['#f3dede', 'Rose poudré'], ['#dfe6d6', 'Sauge'], ['#e6e1f0', 'Lavande'], ['#1a2a3a', 'Bleu nuit'], ['#4a1820', 'Bordeaux']];
+        const lum = h => { const n = parseInt(h.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, bl = n & 255; return (0.299 * r + 0.587 * g + 0.114 * bl) / 255; };
+        const css = () => { const a = bg.veil / 100, v = bg.tone === 'dark' ? 'rgba(0,0,0,' + a + ')' : 'rgba(255,255,255,' + a + ')', veil = 'linear-gradient(' + v + ',' + v + ')';
+          if (bg.mode === 'color') return veil + ',' + bg.c1; if (bg.mode === 'gradient') return veil + ',linear-gradient(160deg,' + bg.c1 + ',' + bg.c2 + ')';
+          if (bg.mode === 'image' && EV.site_bg_image) return veil + ',url("' + EV.site_bg_image + '") center/cover,' + bg.c1; return ''; };
+        const draw = () => {
+          const lightTpl = EV.site_template !== 'B', dark = bg.mode !== 'default' && bg.mode !== 'image' && lum(bg.c1) < .45 && !(bg.tone === 'light' && bg.veil >= 50);
+          b.innerHTML = '<div class="tiles-row">' + [['default', '🖼️', 'Celui du modèle'], ['color', '🎨', 'Couleur'], ['gradient', '🌅', 'Dégradé'], ['image', '📷', 'Photo']].map(([k, ic, l]) => tile(ic, l, 'data-m="' + k + '"', bg.mode === k)).join('') + '</div>' +
+            (bg.mode === 'default' ? '' :
+              (bg.mode !== 'image' ? '<div class="sw-row">' + PRESETS.map(([c, n]) => '<button type="button" class="sw' + (bg.c1 === c ? ' on' : '') + '" data-c="' + c + '" title="' + n + '" style="background:' + c + '"></button>').join('') + '</div>' +
+                '<div class="row center" style="margin-top:8px"><label class="f">Couleur ' + (bg.mode === 'gradient' ? '1' : '') + '<input type="color" class="inp" id="bgC1" value="' + bg.c1 + '"></label>' + (bg.mode === 'gradient' ? '<label class="f">Couleur 2<input type="color" class="inp" id="bgC2" value="' + bg.c2 + '"></label>' : '') + '</div>'
+              : '<div class="row center" style="margin-top:10px"><label class="btn">' + (EV.site_bg_image ? '✅ Changer la photo' : '📷 Choisir une photo') + '<input type="file" accept="image/*" hidden id="bgImg"></label></div>') +
+              '<div class="bg-veil"><label>Voile pour la lisibilité : <b>' + bg.veil + ' %</b><input type="range" min="0" max="85" step="5" id="bgV" value="' + bg.veil + '"></label><span class="chips"><button type="button" class="chip' + (bg.tone === 'light' ? ' on' : '') + '" data-t="light">Clair</button><button type="button" class="chip' + (bg.tone === 'dark' ? ' on' : '') + '" data-t="dark">Sombre</button></span></div>' +
+              '<div class="bg-prev" style="background:' + css() + '"><span>' + esc(tr(EV.title, L1)) + '</span></div>' +
+              (lightTpl && dark ? '<div class="hint" style="color:#ffd27a">⚠️ Ce fond est foncé et le texte du modèle aussi : ajoute un voile clair (50 % ou plus) pour qu\'il reste lisible.</div>' : '') +
+              '<label class="chk" style="margin-top:8px"><input type="checkbox" id="bgAll" ' + (bg.scope === 'all' ? 'checked' : '') + '> Aussi sur les pages RSVP, mur des vœux, liste de cadeaux et « Y aller »</label>') +
+            '<div class="row center" style="margin-top:12px"><a class="btn ghost sm" target="_blank" rel="noopener" href="' + EV.urls.site + '">👁 Voir le site ↗</a><button type="button" class="btn gold" data-a="ok">Valider</button></div>';
+          $$('[data-m]', b).forEach(x => x.onclick = () => { bg.mode = x.dataset.m; if (bg.mode === 'image' && !bg.veil) bg.veil = 45; draw(); });
+          $$('[data-c]', b).forEach(x => x.onclick = () => { bg.c1 = x.dataset.c; draw(); });
+          $$('[data-t]', b).forEach(x => x.onclick = () => { bg.tone = x.dataset.t; draw(); });
+          const c1 = $('#bgC1', b), c2 = $('#bgC2', b), v = $('#bgV', b), all = $('#bgAll', b), img = $('#bgImg', b);
+          if (c1) c1.onchange = () => { bg.c1 = c1.value; draw(); }; if (c2) c2.onchange = () => { bg.c2 = c2.value; draw(); };
+          if (v) v.oninput = () => { bg.veil = +v.value; b.querySelector('.bg-veil b').textContent = bg.veil + ' %'; b.querySelector('.bg-prev').style.background = css(); }; if (v) v.onchange = draw;
+          if (all) all.onchange = () => { bg.scope = all.checked ? 'all' : 'site'; };
+          if (img) img.onchange = async () => { const fd = new FormData(); fd.append('field', 'site_bg_image'); fd.append('file', img.files[0]); try { const r = await api(BASE + 'upload/', { method: 'POST', form: fd }); EV.site_bg_image = r.url; dirty = true; toast('Photo enregistrée ✦'); draw(); } catch (e) { toast(e.message); } };
+          b.querySelector('[data-a=ok]').onclick = () => { if (bg.mode === 'image' && !EV.site_bg_image) return toast('Choisis d\'abord une photo'); answer({ default: 'Fond du modèle', color: 'Fond couleur', gradient: 'Fond dégradé', image: 'Fond photo' }[bg.mode], () => patch({ site_bg: bg })); };
+        };
+        draw(); } },
     { id: 'couple', label: 'Les mariés & galerie', show: () => has('site') && EV.type === 'mariage', ask: () => "Présentons les mariés 💍 Écris vos prénoms et quelques mots sur chacun, dans chaque langue, puis ajoute vos photos." + (EV.site_template === 'C' ? '' : " <i>Ces sections s'affichent avec le modèle « Luxe Romantique ».</i>"),
       ui: b => { const c = JSON.parse(JSON.stringify(EV.couple || {})); ['p1', 'p2'].forEach(k => { c[k] = c[k] || { name: '', text: {} }; c[k].text = c[k].text || {}; });
         const up = async (field, file) => { const fd = new FormData(); fd.append('field', field); fd.append('file', file); const r = await api(BASE + 'upload/', { method: 'POST', form: fd }); EV[field] = r.url; };
@@ -197,7 +227,7 @@
 
   const pop = $('#botPop'), card = $('#botCard');
   let view = 'step'; // step | preview | history
-  function open() { pop.hidden = false; requestAnimationFrame(() => pop.classList.add('show')); document.body.classList.add('bot-open'); render(); }
+  function open(stepId) { if (typeof stepId === 'string') { const i = STEPS.findIndex(x => x.id === stepId); if (i >= 0 && STEPS[i].id !== S.step) { S.step = STEPS[i].id; S.paused = false; push('bot', STEPS[i].ask()); save(); } } pop.hidden = false; requestAnimationFrame(() => pop.classList.add('show')); document.body.classList.add('bot-open'); render(); }
   function close() {
     pop.classList.remove('show'); document.body.classList.remove('bot-open');
     setTimeout(() => { pop.hidden = true; }, 280);

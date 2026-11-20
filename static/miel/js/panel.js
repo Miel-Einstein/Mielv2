@@ -35,6 +35,7 @@
       '</div><a class="btn ghost sm" style="margin-top:10px" href="/app/e/' + EV.slug + '/bot/">🤖 Partager avec l\'assistant (WhatsApp, Telegram)</a></div>' +
       // modèle du site
       (EV.services.includes('site') && EV.type === 'mariage' ? '<div class="card"><h2 style="font-size:26px">🌐 Site du mariage</h2><p class="muted" style="font-size:13px;margin:6px 0 10px">Choisis le style : tes textes et tes photos restent les mêmes.</p><div class="grid" style="gap:8px">' +
+        '<div class="row" style="border:1px dashed var(--line);border-radius:12px;padding:8px 10px"><span style="flex:1;min-width:150px"><b>🎨 Fond du site</b><br><span class="muted" style="font-size:12.5px">' + ({ default: 'Celui du modèle', color: 'Couleur unie', gradient: 'Dégradé', image: 'Photo' })[(EV.site_bg || {}).mode || 'default'] + '</span></span><button class="btn sm" id="pBg">Changer</button></div>' +
         [['A', 'Botanical Editorial', 'Crème, sauge, vert forêt, terracotta'], ['B', 'Modern Romance', 'Bleu nuit, vieux rose, or rosé'], ['C', 'Luxe Romantique', 'Ivoire, champagne, bordeaux, or ancien']].map(([k, n, d]) => '<div class="row" style="border:1px solid ' + (EV.site_template === k ? 'var(--honey)' : 'var(--line)') + ';border-radius:12px;padding:8px 10px"><span style="flex:1;min-width:150px"><b>' + n + '</b>' + (EV.site_template === k ? ' <span class="pill ok">en ligne</span>' : '') + '<br><span class="muted" style="font-size:12.5px">' + d + '</span></span><a class="btn sm ghost" target="_blank" rel="noopener" href="' + esc(EV.urls.site) + '?tpl=' + k + '">Aperçu ↗</a>' + (EV.site_template === k ? '' : '<button class="btn sm gold" data-tpl="' + k + '">Choisir</button>') + '</div>').join('') + '</div></div>' : '') +
       // moments
       (EV.services.includes('moments') ? '<div class="card"><div class="row" style="justify-content:space-between"><h2 style="font-size:26px">✨ Moments forts</h2><span class="pill">temps réel</span></div><p class="muted" style="font-size:13px;margin:6px 0">Ils s\'affichent en même temps sur le téléphone des invités qui sont sur le mur, et sur l\'écran géant.</p>' +
@@ -69,6 +70,7 @@
   function bind() {
     $$('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Lien copié ✦')));
     $$('[data-launch]').forEach(b => b.onclick = () => launch(+b.dataset.launch));
+    const pBg = $('#pBg'); if (pBg) pBg.onclick = () => Miel.openBot && Miel.openBot('fond');
     $$('[data-tpl]').forEach(b => b.onclick = async () => { await api(BASE, { method: 'PATCH', json: { site_template: b.dataset.tpl } }); toast('Modèle du site changé ✦'); load(); });
     $$('[data-reset]').forEach(b => b.onclick = async () => { const fd = new FormData(); fd.append('reset', '1'); await api(BASE + 'moments/' + b.dataset.reset + '/', { method: 'POST', form: fd }); load(); });
     $$('[data-ph]').forEach(i => i.onchange = async () => { const fd = new FormData(); fd.append('photo', i.files[0]); await api(BASE + 'moments/' + i.dataset.ph + '/', { method: 'POST', form: fd }); toast('Photo chargée ✦'); load(); });

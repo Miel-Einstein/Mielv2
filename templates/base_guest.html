@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="{% static 'miel/css/cards.css' %}">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 {% block head %}{% endblock %}
+{% if site_bg_css %}<style>{{ site_bg_css|safe }}</style>{% endif %}
 </head>
 <body class="guest-body {% block bodyclass %}{% endblock %}">
 {% csrf_token %}
