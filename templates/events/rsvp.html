@@ -38,7 +38,7 @@
     langsT:"{% translate 'Encore un petit détail…' %}",langsB:"{% translate 'Nous voulons que chacun se sente à l’aise à table et puisse discuter avec ses voisins 💬' %}",
     langsQ:"{% translate 'Dans quelles langues aimez-vous converser ?' %}",langsH:"{% translate 'Vous pouvez en choisir plusieurs, ou passer cette étape.' %}",
     other:"{% translate 'Autre' %}",cont:"{% translate '💖 Continuer' %}",skip:"{% translate 'Passer' %}",first:"{% translate 'Le prénom est obligatoire' %}"};
-  const LN={fr:'🇫🇷 Français',en:'🇬🇧 English',it:'🇮🇹 Italiano',ln:'🇨🇩 Lingála'};
+  const LN={fr:'🇫🇷 Français',en:'🇬🇧 English',it:'🇮🇹 Italiano',ln:'🇨🇬 Lingála'};
   let att=true,comps=[],kids=[];
   $('#kidsBlock').hidden=!C.kids_invited;
   const hint=a=>{if(a===''||a==null)return '';a=+a;if(a<C.age_with_parents)return T.withParents+(C.baby_chair?'':' '+T.noChair);if(C.kids_table&&a<=C.age_kids_max)return T.kidsTable;return T.adultSeat};

@@ -5,12 +5,14 @@
   const { $, $$, esc, api, toast, openSheet, closeSheet, tr } = Miel;
   const EV = window.EVENT;
   const BASE = '/api/e/' + EV.slug + '/';
-  const LANGS = { fr: ['🇫🇷', 'Français'], en: ['🇬🇧', 'English'], it: ['🇮🇹', 'Italiano'], ln: ['🇨🇩', 'Lingala'] };
+  const LANGS = { fr: ['🇫🇷', 'Français'], en: ['🇬🇧', 'English'], it: ['🇮🇹', 'Italiano'], ln: ['🇨🇬', 'Lingala'] };
   const TYPES = [['mariage', '💍', 'Mariage'], ['anniversaire', '🎂', 'Anniversaire'], ['bapteme', '🕊️', 'Baptême'], ['diner', '🍽️', 'Dîner au restaurant'], ['entreprise', '🏢', "Événement d'entreprise"]];
   const SERVICES = [['carte', '💌', "Carte d'invitation & RSVP", 1], ['cadeaux', '🎁', 'Liste de cadeaux'], ['tables', '🪑', 'Plan de table'], ['alerter', '⏰', 'Alerter (rappels & budget)'], ['mur', '💬', 'Mur des vœux & photos'], ['moments', '✨', 'Moments forts'], ['site', '🌐', 'Site du mariage', 0, 1]];
   let S = { step: 'accueil', log: [], paused: false };
   let share = {};
   const has = s => EV.services.includes(s);
+  const tile = (icon, label, attrs, on, disabled) => '<button type="button" class="opt' + (on ? ' on' : '') + '" ' + attrs + (disabled ? ' disabled' : '') + '><span class="em">' + icon + '</span><span>' + label + '</span></button>';
+  let dirty = false;
   const L1 = () => EV.languages[0];
 
   // ---------- champs traduits : un champ par langue de l'événement
@@ -29,19 +31,19 @@
   }
   const missingLangs = o => EV.languages.filter(l => !o[l]);
 
-  async function patch(data) { Object.assign(EV, await api(BASE, { method: 'PATCH', json: data })); }
+  async function patch(data) { Object.assign(EV, await api(BASE, { method: 'PATCH', json: data })); dirty = true; }
 
   // ---------- étapes
   const STEPS = [
     { id: 'accueil', label: 'Accueil', ask: () => "Bonjour 👋 Je suis <b>Miel</b>, ton assistant. Je vais t'aider à préparer ton événement, étape par étape.<br><br>Appuie sur <b>Pause</b> quand tu veux : je reprendrai exactement ici. Le bouton <b>Menu</b> te permet de revenir sur n'importe quelle partie.",
-      ui: b => { b.innerHTML = '<button class="btn gold" data-a="go">C\'est parti ✨</button>'; b.querySelector('[data-a=go]').onclick = () => answer("C'est parti !"); } },
+      ui: b => { b.innerHTML = '<div class="row center"><button class="btn gold" data-a="go">C\'est parti ✨</button></div>'; b.querySelector('[data-a=go]').onclick = () => answer("C'est parti !"); } },
     { id: 'type', label: "Type d'événement", ask: () => "Quel type d'événement prépares-tu ?",
-      ui: b => { b.innerHTML = '<div class="chips">' + TYPES.map(([id, ic, l]) => '<button class="chip ' + (EV.type === id ? 'on' : '') + '" data-id="' + id + '">' + ic + ' ' + l + '</button>').join('') + '</div>';
-        $$('.chip', b).forEach(c => c.onclick = () => { const ty = TYPES.find(x => x[0] === c.dataset.id); answer(ty[1] + ' ' + ty[2], () => patch({ type: ty[0] })); }); } },
+      ui: b => { b.innerHTML = '<div class="tiles-row">' + TYPES.map(([id, ic, l]) => tile(ic, l, 'data-id="' + id + '"', EV.type === id)).join('') + '</div>';
+        $$('.opt', b).forEach(c => c.onclick = () => { const ty = TYPES.find(x => x[0] === c.dataset.id); answer(ty[1] + ' ' + ty[2], () => patch({ type: ty[0] })); }); } },
     { id: 'langues', label: 'Langues', ask: () => "Dans quelles langues tes invités vont-ils lire l'invitation ? Tu peux en choisir plusieurs. Pour chaque texte personnalisé, je te demanderai la traduction.",
       ui: b => { const sel = new Set(EV.languages);
-        b.innerHTML = '<div class="chips">' + Object.entries(LANGS).map(([k, l]) => '<button class="chip ' + (sel.has(k) ? 'on' : '') + '" data-k="' + k + '">' + l[0] + ' ' + l[1] + '</button>').join('') + '</div><div class="row" style="margin-top:10px"><button class="btn gold" data-a="ok">Valider</button></div>';
-        $$('.chip', b).forEach(c => c.onclick = () => { sel.has(c.dataset.k) ? sel.delete(c.dataset.k) : sel.add(c.dataset.k); c.classList.toggle('on'); });
+        b.innerHTML = '<div class="tiles-row">' + Object.entries(LANGS).map(([k, l]) => tile(l[0], l[1], 'data-k="' + k + '"', sel.has(k))).join('') + '</div><div class="row center" style="margin-top:14px"><button class="btn gold" data-a="ok">Valider</button></div>';
+        $$('.opt', b).forEach(c => c.onclick = () => { sel.has(c.dataset.k) ? sel.delete(c.dataset.k) : sel.add(c.dataset.k); c.classList.toggle('on'); });
         b.querySelector('[data-a=ok]').onclick = () => { if (!sel.size) return toast('Choisis au moins une langue'); const ls = Object.keys(LANGS).filter(k => sel.has(k)); answer(ls.map(k => LANGS[k][0] + ' ' + LANGS[k][1]).join(', '), () => patch({ languages: ls })); }; } },
     { id: 'titre', label: 'Titre (traduit)', ask: () => "Comment s'appelle ton événement ? Écris le <b>titre</b> puis la petite <b>phrase d'accroche</b> dans chaque langue.",
       ui: b => { b.innerHTML = '<div class="grid"><b>Titre</b>' + langInputs('title', EV.title, 'Titre') + '<b>Accroche</b>' + langInputs('subtitle', EV.subtitle, 'ex. Nous nous marions') + '<div><button class="btn gold" data-a="ok">Valider</button></div></div>';
@@ -75,12 +77,13 @@
         b.querySelector('[data-a=ok]').onclick = () => answer(EV.cover_image ? 'Photo ajoutée' : 'Plus tard'); } },
     { id: 'services', label: 'Services', ask: () => "Quels services veux-tu utiliser ? Tu pourras en ajouter plus tard.",
       ui: b => { const sel = new Set(EV.services); const wed = EV.type === 'mariage';
-        b.innerHTML = '<div class="chips">' + SERVICES.map(([id, ic, l, req, wo]) => '<button class="chip ' + (sel.has(id) ? 'on' : '') + '" data-id="' + id + '" ' + (req || (wo && !wed) ? 'disabled' : '') + '>' + ic + ' ' + l + (wo && !wed ? ' (mariages)' : '') + '</button>').join('') + '</div><div class="row" style="margin-top:10px"><button class="btn gold" data-a="ok">Valider</button></div>';
-        $$('.chip:not([disabled])', b).forEach(c => c.onclick = () => { sel.has(c.dataset.id) ? sel.delete(c.dataset.id) : sel.add(c.dataset.id); c.classList.toggle('on'); });
+        b.innerHTML = '<div class="tiles-row">' + SERVICES.map(([id, ic, l, req, wo]) => tile(ic, l + (wo && !wed ? ' (mariages)' : ''), 'data-id="' + id + '"', sel.has(id), req || (wo && !wed))).join('') + '</div><div class="row center" style="margin-top:14px"><button class="btn gold" data-a="ok">Valider</button></div>';
+        $$('.opt:not([disabled])', b).forEach(c => c.onclick = () => { sel.has(c.dataset.id) ? sel.delete(c.dataset.id) : sel.add(c.dataset.id); c.classList.toggle('on'); });
         b.querySelector('[data-a=ok]').onclick = () => { const arr = SERVICES.map(s => s[0]).filter(id => sel.has(id) || id === 'carte'); answer(arr.map(id => SERVICES.find(s => s[0] === id)[1]).join(' ') + ' ' + arr.length + ' services', () => patch({ services: arr })); }; } },
     { id: 'carte', label: "Carte d'invitation", ask: () => "Choisis le modèle de ta carte d'invitation. L'aperçu se met à jour.",
-      ui: b => { b.innerHTML = '<div class="chips">' + [['botanique', '🌿 Botanique'], ['moderne', '🖤 Moderne'], ['rose', '🌸 Rose romantique']].map(([k, l]) => '<button class="chip ' + (EV.card_template === k ? 'on' : '') + '" data-k="' + k + '">' + l + '</button>').join('') + '</div><div class="row" style="margin-top:10px"><button class="btn gold" data-a="ok">Garder ce modèle</button></div>';
-        $$('.chip', b).forEach(c => c.onclick = async () => { await patch({ card_template: c.dataset.k }); $$('.chip', b).forEach(x => x.classList.toggle('on', x === c)); preview(); });
+      ui: b => { b.innerHTML = '<div class="tiles-row">' + [['botanique', '🌿', 'Botanique'], ['moderne', '🖤', 'Moderne'], ['rose', '🌸', 'Rose romantique']].map(([k, ic, l]) => tile(ic, l, 'data-k="' + k + '"', EV.card_template === k)).join('') + '</div><div class="row center" style="margin-top:14px"><button class="btn gold" data-a="ok">Garder ce modèle</button><button class="btn ghost sm" data-a="pv">👁 Voir la carte</button></div>';
+        $$('.opt', b).forEach(c => c.onclick = async () => { await patch({ card_template: c.dataset.k }); $$('.opt', b).forEach(x => x.classList.toggle('on', x === c)); });
+        b.querySelector('[data-a=pv]').onclick = () => togglePreview(true);
         b.querySelector('[data-a=ok]').onclick = () => answer('Modèle « ' + EV.card_template + ' »'); } },
     { id: 'categories', label: "Catégories d'invités", ask: () => "Voici les <b>catégories d'invités</b>. Chaque invité en choisira <b>une seule</b> dans le RSVP. L'ordre sert de priorité pour le plan de table, et 👑 réserve la catégorie à la table d'honneur (elle n'apparaît pas dans le RSVP).",
       ui: b => { let cats = JSON.parse(JSON.stringify(EV.categories));
@@ -104,7 +107,12 @@
           b.querySelector('[data-a=ok]').onclick = () => { rd(); answer(k.kids_invited ? 'Enfants invités' + (k.kids_table ? ', table des enfants (surveillance : ' + (k.supervisor_name || 'à trouver') + ')' : '') : "Pas d'enfants", () => patch(k)); }; };
         draw(); } },
     { id: 'langtable', label: 'Langues à table', show: () => has('tables'), ask: () => "Veux-tu que le RSVP demande aux invités <b>dans quelles langues ils aiment converser</b> ? Je m'en sers pour asseoir ensemble des personnes qui se comprennent. S'ils ne choisissent rien, je garde leur langue de navigation.",
-      ui: b => { b.innerHTML = '<div class="chips"><button class="chip" data-v="1">Oui, poser la question</button><button class="chip" data-v="0">Non, inutile</button></div>'; $$('.chip', b).forEach(c => c.onclick = () => answer(c.textContent, () => patch({ ask_languages: c.dataset.v === '1' }))); } },
+      ui: b => { b.innerHTML = '<div class="tiles-row">' + tile('💬', 'Oui, poser la question', 'data-v="1"', EV.ask_languages) + tile('🙅', 'Non, inutile', 'data-v="0"', !EV.ask_languages) + '</div>'; $$('.opt', b).forEach(c => c.onclick = () => answer(c.textContent.trim(), () => patch({ ask_languages: c.dataset.v === '1' }))); } },
+    { id: 'site', label: 'Modèle du site', show: () => has('site') && EV.type === 'mariage', ask: () => "Choisis le style de ton <b>site de mariage</b>. Tu peux changer de modèle à tout moment : tes textes et tes photos restent les mêmes.",
+      ui: b => { const T = [['A', 'Botanical Editorial', 'Crème, sauge, vert forêt et terracotta. Style magazine.', ['#fbf8f1', '#8a9a7b', '#2a3528', '#c87a55']], ['B', 'Modern Romance', 'Bleu nuit, vieux rose et or rosé. Style romantique.', ['#faf7f2', '#1a2a3a', '#d4a5a5', '#e8c4b8']]];
+        b.innerHTML = '<div class="tiles-row">' + T.map(([k, n, d, c]) => '<button type="button" class="opt site-tile ' + (EV.site_template === k ? 'on' : '') + '" data-k="' + k + '"><span class="sw">' + c.map(x => '<i style="background:' + x + '"></i>').join('') + '</span><b>' + n + '</b><small>' + d + '</small></button>').join('') + '</div><div class="row center" style="margin-top:14px">' + T.map(([k, n]) => '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + EV.urls.site + '?tpl=' + k + '">👁 Voir « ' + n + ' » ↗</a>').join('') + '</div><div class="row center" style="margin-top:10px"><button class="btn gold" data-a="ok">Garder ce modèle</button></div>';
+        $$('.opt', b).forEach(c => c.onclick = async () => { await patch({ site_template: c.dataset.k }); $$('.opt', b).forEach(x => x.classList.toggle('on', x === c)); });
+        b.querySelector('[data-a=ok]').onclick = () => answer('Site « ' + (EV.site_template === 'A' ? 'Botanical Editorial' : 'Modern Romance') + ' »'); } },
     { id: 'histoire', label: 'Notre histoire (site)', show: () => has('site') && EV.type === 'mariage', ask: () => "Pour ton site, racontons votre histoire. Ajoute, retire ou réordonne les étapes, avec tes propres titres, dans chaque langue.",
       ui: b => { let st = JSON.parse(JSON.stringify(EV.story));
         const draw = () => { b.innerHTML = '<div class="list-edit">' + st.map((s, i) => '<div class="card" style="padding:10px" data-s="' + i + '"><div class="row" style="justify-content:space-between"><b>Étape ' + (i + 1) + '</b><span><button class="icon-btn" data-u="' + i + '">▲</button> <button class="icon-btn" data-x="' + i + '">✕</button></span></div>' + langInputs('st' + i, s.title, 'Titre') + '<div style="height:6px"></div>' + langInputs('sx' + i, s.text, 'Texte', 'textarea') + (s.id ? '<label class="btn sm" style="margin-top:6px">' + (s.image ? '✅' : '📷') + ' Photo<input type="file" hidden accept="image/*" data-img="' + s.id + '"></label>' : '<div class="hint">Valide une première fois pour pouvoir ajouter la photo.</div>') + '</div>').join('') + '</div><div class="row" style="margin-top:8px"><button class="btn sm" data-a="add">+ Ajouter une étape</button><button class="btn sm" data-a="save">Enregistrer</button><button class="btn gold" data-a="ok">Valider</button></div>';
@@ -141,8 +149,8 @@
         b.querySelector('[data-a=ok]').onclick = () => answer(EV.moments.length + ' moment(s) fort(s) prêts'); } },
     { id: 'partage', label: 'Partage', ask: () => "Dernière étape : partager ton invitation 💌 Par quel moyen veux-tu l'envoyer ?",
       ui: b => { const url = EV.urls.share;
-        if (!share.ch) { b.innerHTML = '<div class="chips"><button class="chip" data-c="wa">🟢 WhatsApp</button><button class="chip" data-c="tg">✈️ Telegram</button><button class="chip" data-c="cp">🔗 Copier le lien</button></div>'; $$('.chip', b).forEach(c => c.onclick = () => { share.ch = c.dataset.c; push('me', esc(c.textContent)); push('bot', 'Dans quelle langue veux-tu envoyer le message ?'); save(); render(); }); return; }
-        if (!share.lang) { b.innerHTML = '<div class="chips">' + EV.languages.map(k => '<button class="chip" data-l="' + k + '">' + LANGS[k][0] + ' ' + LANGS[k][1] + '</button>').join('') + '</div>'; $$('.chip', b).forEach(c => c.onclick = () => { share.lang = c.dataset.l; push('me', esc(c.textContent)); push('bot', HELP[share.ch]); save(); render(); }); return; }
+        if (!share.ch) { b.innerHTML = '<div class="tiles-row">' + tile('🟢', 'WhatsApp', 'data-c="wa"') + tile('✈️', 'Telegram', 'data-c="tg"') + tile('🔗', 'Copier le lien', 'data-c="cp"') + '</div>'; $$('.opt', b).forEach(c => c.onclick = () => { share.ch = c.dataset.c; push('me', esc(c.textContent.trim())); push('bot', 'Dans quelle langue veux-tu envoyer le message ?'); save(); render(); }); return; }
+        if (!share.lang) { b.innerHTML = '<div class="tiles-row">' + EV.languages.map(k => tile(LANGS[k][0], LANGS[k][1], 'data-l="' + k + '"')).join('') + '</div>'; $$('.opt', b).forEach(c => c.onclick = () => { share.lang = c.dataset.l; push('me', esc(c.textContent.trim())); push('bot', HELP[share.ch]); save(); render(); }); return; }
         const msg = shareText(share.lang, url);
         const href = share.ch === 'wa' ? 'https://wa.me/?text=' + encodeURIComponent(msg) : share.ch === 'tg' ? 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(msg.replace(url, '')) : '';
         b.innerHTML = '<div class="grid"><textarea class="inp" rows="6" id="sh-msg">' + esc(msg) + '</textarea><div class="row">' + (href ? '<a class="btn gold" id="sh-go" href="' + href + '" target="_blank" rel="noopener">' + (share.ch === 'wa' ? 'Ouvrir WhatsApp' : 'Ouvrir Telegram') + '</a>' : '') + '<button class="btn" data-a="copy">Copier le message</button><button class="btn ghost sm" data-a="again">Autre moyen</button><button class="btn sm" data-a="ok">Terminer ✓</button></div></div>';
@@ -162,37 +170,59 @@
     return '✨🥂 ' + n + (w ? ' vous invitent à leur mariage' : ' — vous êtes invités') + " ✨🥂\n\nNous serions ravis de vous compter parmi nous. Pourriez-vous nous confirmer votre présence ?\n\n👉 " + u + "\n\nDans l'attente de vous retrouver ✨";
   }
 
-  // ---------- moteur
+  // ---------- moteur (pop-up qui apparaît et disparaît)
   const idx = id => Math.max(0, STEPS.findIndex(s => s.id === id));
   const visible = i => !STEPS[i].show || STEPS[i].show();
   const push = (from, html) => S.log.push({ from, html });
   const save = () => api(BASE + 'bot/', { method: 'PUT', json: S }).catch(() => toast('Connexion perdue : la progression sera enregistrée au prochain essai'));
-  function goStep(i, note) { S.step = STEPS[i].id; S.paused = false; if (note) push('bot', note); push('bot', STEPS[i].ask()); save(); render(); }
+  function goStep(i, note) { S.step = STEPS[i].id; S.paused = false; if (note) push('bot', note); push('bot', STEPS[i].ask()); save(); render(true); }
   function nextStep() { let i = idx(S.step) + 1; while (i < STEPS.length && !visible(i)) i++; goStep(Math.min(i, STEPS.length - 1)); }
   async function answer(text, apply) {
-    try { if (apply) await apply(); } catch (e) { toast(e.message); return; }
+    try { if (apply) { await apply(); dirty = true; } } catch (e) { toast(e.message); return; }
     push('me', esc(text)); nextStep();
   }
-  function togglePause() { S.paused = !S.paused; push('bot', S.paused ? '⏸ Section en pause. Reviens quand tu veux, je reprendrai ici.' : '▶ On reprend !'); if (!S.paused) push('bot', STEPS[idx(S.step)].ask()); save(); render(); }
+  function togglePause() { S.paused = !S.paused; push('bot', S.paused ? '⏸ Section en pause.' : '▶ On reprend !'); if (!S.paused) push('bot', STEPS[idx(S.step)].ask()); save(); render(true); }
 
-  function render() {
-    const i = idx(S.step), st = STEPS[i];
-    $('#chatState').textContent = S.paused ? 'En pause' : 'Étape ' + (i + 1) + ' / ' + STEPS.length + ' · ' + st.label;
-    $('#bPause').textContent = S.paused ? '▶ Reprendre' : '⏸ Pause';
-    $('#msgs').innerHTML = S.log.map(m => '<div class="msg ' + (m.from === 'me' ? 'me' : 'bot') + '">' + m.html + '</div>').join('');
-    const comp = $('#composer');
-    if (S.paused) { comp.innerHTML = '<div class="muted">Tu as mis cette section en pause. Ne t\'inquiète pas, tu pourras revenir quand tu veux.</div><button class="btn gold" style="margin-top:8px" id="bRes">▶ Reprendre</button>'; $('#bRes').onclick = togglePause; }
-    else st.ui(comp);
-    const m = $('#msgs'); m.scrollTop = m.scrollHeight;
-    preview();
+  const pop = $('#botPop'), card = $('#botCard');
+  let view = 'step'; // step | preview | history
+  function open() { pop.hidden = false; requestAnimationFrame(() => pop.classList.add('show')); document.body.classList.add('bot-open'); render(); }
+  function close() {
+    pop.classList.remove('show'); document.body.classList.remove('bot-open');
+    setTimeout(() => { pop.hidden = true; }, 280);
+    if (dirty) { dirty = false; window.dispatchEvent(new CustomEvent('miel:event-changed')); }
+  }
+  Miel.openBot = open;
+  function togglePreview(force) { view = force === true || view !== 'preview' ? 'preview' : 'step'; render(true); }
+
+  function render(animate) {
+    if (pop.hidden) return;
+    const draw = () => {
+      const i = idx(S.step), st = STEPS[i];
+      const visibleSteps = STEPS.filter((_, k) => visible(k));
+      $('#botLabel').textContent = S.paused ? 'En pause' : 'Étape ' + (visibleSteps.indexOf(st) + 1) + ' / ' + visibleSteps.length + ' · ' + st.label;
+      $('#botPause').textContent = S.paused ? '▶ Reprendre' : '⏸ Pause';
+      $('#botPrev').classList.toggle('on', view === 'preview');
+      $('#botHistBtn').classList.toggle('on', view === 'history');
+      const body = $('#botBody');
+      if (view === 'history') { body.innerHTML = '<div class="bot-hist">' + S.log.map(m => '<div class="msg ' + (m.from === 'me' ? 'me' : 'bot') + '">' + m.html + '</div>').join('') + '</div>'; const h = body.firstChild; h.scrollTop = h.scrollHeight; return; }
+      if (view === 'preview') { body.innerHTML = '<div id="pvCol" class="show"></div>'; preview(); return; }
+      const lastBot = [...S.log].reverse().find(m => m.from !== 'me');
+      const lastMe = [...S.log].reverse().find(m => m.from === 'me');
+      body.innerHTML = (lastMe && !S.paused ? '<div class="bot-echo">« ' + lastMe.html + ' »</div>' : '') + '<div class="bot-ask">' + (S.paused ? 'Tu as mis cette section en pause. Ne t\'inquiète pas, tu pourras revenir quand tu veux.' : (lastBot ? lastBot.html : st.ask())) + '</div><div class="bot-input" id="composer"></div>';
+      const comp = $('#composer');
+      if (S.paused) { comp.innerHTML = '<div class="row center"><button class="btn gold" id="bRes">▶ Reprendre</button></div>'; $('#bRes').onclick = togglePause; }
+      else st.ui(comp);
+    };
+    if (!animate) { draw(); return; }
+    card.classList.add('swap');
+    setTimeout(() => { draw(); card.classList.remove('swap'); card.scrollTop = 0; }, 160);
   }
   function preview() {
     const pv = $('#pvCol'); if (!pv) return;
     const l = pv.dataset.lang || L1();
     const title = tr(EV.title, l), mono = title.split(/[&\s]+/).filter(Boolean).map(w => w[0]).slice(0, 2).join(' & ');
-    pv.innerHTML = '<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><b>Aperçu en direct</b><div class="chips">' + EV.languages.map(k => '<button class="chip ' + (l === k ? 'on' : '') + '" data-pl="' + k + '" style="min-height:32px;padding:4px 10px;font-size:12px">' + LANGS[k][0] + '</button>').join('') + '</div></div>' +
-      '<div class="icard ' + EV.card_template + '"><div class="ph" ' + (EV.cover_image ? 'style="background:url(\'' + esc(EV.cover_image) + '\') center/cover"' : '') + '>' + (EV.cover_image ? '' : '<div class="mono">' + esc(mono) + '</div>') + (tr(EV.subtitle, l) ? '<div class="badge">♥ ' + esc(tr(EV.subtitle, l)) + '</div>' : '') + '</div><div class="bd"><div class="names">' + esc(title) + '</div><div class="dear">Marie Dupont</div><div style="font-size:13px">' + (EV.date ? new Date(EV.date + 'T12:00').toLocaleDateString(l === 'ln' ? 'fr-FR' : l, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '') + '</div><div class="evs">' + EV.venues.map(v => '<div><b>' + esc(v.start) + '</b> · ' + esc(tr(v.name, l)) + '</div>').join('') + '</div><div class="qrrow"><div class="qr" data-qr="' + esc(EV.urls.wall) + '"></div><div>QR code personnel vers le mur des vœux</div></div></div></div>' +
-      '<div style="margin-top:12px;font-size:13px" class="muted">Services : ' + EV.services.map(id => (SERVICES.find(s => s[0] === id) || [])[1]).join(' ') + '</div></div>';
+    pv.innerHTML = '<div class="row center" style="margin-bottom:12px">' + EV.languages.map(k => tile(LANGS[k][0], LANGS[k][1], 'data-pl="' + k + '"', l === k)).join('') + '</div>' +
+      '<div class="icard ' + EV.card_template + '"><div class="ph" ' + (EV.cover_image ? 'style="background:url(\'' + esc(EV.cover_image) + '\') center/cover"' : '') + '>' + (EV.cover_image ? '' : '<div class="mono">' + esc(mono) + '</div>') + (tr(EV.subtitle, l) ? '<div class="badge">♥ ' + esc(tr(EV.subtitle, l)) + '</div>' : '') + '</div><div class="bd"><div class="names">' + esc(title) + '</div><div class="dear">Marie Dupont</div><div style="font-size:13px">' + (EV.date ? new Date(EV.date + 'T12:00').toLocaleDateString(l === 'ln' ? 'fr-FR' : l, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '') + '</div><div class="evs">' + EV.venues.map(v => '<div><b>' + esc(v.start) + '</b> · ' + esc(tr(v.name, l)) + '</div>').join('') + '</div><div class="qrrow"><div class="qr" data-qr="' + esc(EV.urls.wall) + '"></div><div>QR code personnel vers le mur des vœux</div></div></div></div>';
     $$('[data-pl]', pv).forEach(b => b.onclick = () => { pv.dataset.lang = b.dataset.pl; preview(); });
     Miel.renderQRs(pv);
   }
@@ -200,14 +230,20 @@
   async function init() {
     S = await api(BASE + 'bot/');
     if (!S.log.length) { S.step = 'accueil'; push('bot', STEPS[0].ask()); save(); }
-    $('#bPause').onclick = togglePause;
-    $('#bPrev').onclick = () => { const c = $('#pvCol'); c.classList.toggle('show'); if (c.classList.contains('show')) c.scrollIntoView({ behavior: 'smooth' }); };
-    $('#bMenu').onclick = () => {
+    $('#botFab').onclick = open;
+    $('#botClose').onclick = close;
+    pop.addEventListener('click', e => { if (e.target === pop) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.hidden) close(); });
+    $('#botPause').onclick = togglePause;
+    $('#botPrev').onclick = () => togglePreview();
+    $('#botHistBtn').onclick = () => { view = view === 'history' ? 'step' : 'history'; render(true); };
+    $('#botMenu').onclick = () => {
       const cur = idx(S.step);
-      const sh = openSheet('<h3>Menu</h3><p class="muted" style="margin-top:0">Reviens sur n\'importe quelle partie.</p><div class="menu-list">' + STEPS.map((x, i) => visible(i) ? '<button data-i="' + i + '" class="' + (i === cur ? 'cur' : '') + '"><span>' + esc(x.label) + '</span><span class="pill">' + (i < cur ? 'fait' : i === cur ? 'en cours' : 'à venir') + '</span></button>' : '').join('') + '</div>');
-      $$('[data-i]', sh).forEach(x => x.onclick = () => { closeSheet(); goStep(+x.dataset.i, '↩ Retour à « ' + esc(STEPS[+x.dataset.i].label) + ' ».'); });
+      const sh = openSheet('<h3>Étapes</h3><p class="muted" style="margin-top:0">Reviens sur n\'importe quelle partie.</p><div class="menu-list">' + STEPS.map((x, i) => visible(i) ? '<button data-i="' + i + '" class="' + (i === cur ? 'cur' : '') + '"><span>' + esc(x.label) + '</span><span class="pill">' + (i < cur ? 'fait' : i === cur ? 'en cours' : 'à venir') + '</span></button>' : '').join('') + '</div>');
+      $$('[data-i]', sh).forEach(x => x.onclick = () => { closeSheet(); view = 'step'; goStep(+x.dataset.i, '↩ Retour à « ' + esc(STEPS[+x.dataset.i].label) + ' ».'); });
     };
-    render();
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('bot') === '1' || S.log.length <= 1) open();
   }
   init().catch(e => toast(e.message));
 })();

@@ -60,7 +60,7 @@
   function render() {
     const wide = innerWidth >= 900, n = P.tables.length;
     if (!n) {
-      main.innerHTML = '<div class="wrap"><div class="card"><h2>Plan de table</h2><p class="muted">Aucune table pour le moment. Lance la répartition automatique : elle tient compte des catégories, des langues, des enfants et de la table d\'honneur.</p><div class="row"><label class="f">Places par table<input class="inp" type="number" id="capIn" value="8" min="2" max="30"></label><button class="btn gold" id="tbAuto">↻ Répartir automatiquement</button></div></div></div>';
+      main.innerHTML = '<div class="wrap"><div class="card"><h2>Plan de table</h2><p class="muted">Aucune table pour le moment. Choisis le nombre de tables, les places par table et tes tables particulières : la répartition tient compte des catégories, des langues, des enfants et de la table d\'honneur.</p><button type="button" class="btn gold" id="tbAuto">↻ Répartition automatique</button></div></div>';
       $('#tbAuto').onclick = auto; return;
     }
     if (TB.a >= n) TB.a = 0; if (TB.b >= n || TB.b === TB.a) TB.b = (TB.a + 1) % n;
@@ -77,14 +77,42 @@
     bind();
   }
 
-  async function auto() {
-    const cap = $('#capIn') ? +$('#capIn').value : (P.tables[0] && P.tables.find(t => t.kind === 'std') || {}).capacity || 8;
-    if (P.tables.length && !confirmInline()) return;
-    if (P.tables.length) snap();
-    P = await api(BASE + 'tables/auto/', { method: 'POST', json: { capacity: cap } });
-    TB.sel = null; render(); toast('Répartition automatique terminée ✦', TB.undo.length ? undo : null);
+  // Répartition automatique : nombre de tables, places par table et tables particulières
+  function auto() {
+    const cfg = JSON.parse(JSON.stringify(P.config || { tables: 1, capacity: 8, specials: [] }));
+    const people = Object.keys(P.persons).length;
+    const KINDS = { std: 'Standard', honor: "Table d'honneur", kids: 'Table des enfants' };
+    const sh = openSheet('<h3>Répartition automatique</h3><p class="muted" style="margin-top:0">' + people + ' personnes confirmées à placer.</p><div class="grid" id="cfgBox"></div>');
+    const box = $('#cfgBox', sh);
+    const sync = () => {
+      cfg.tables = Math.max(0, +$('#cfgN', box).value || 0); cfg.capacity = Math.max(1, +$('#cfgC', box).value || 1);
+      $$('[data-sp]', box).forEach(r => { const t = cfg.specials[+r.dataset.sp]; t.name = $('[data-f=name]', r).value; t.capacity = Math.max(1, +$('[data-f=capacity]', r).value || 1); t.kind = $('[data-f=kind]', r).value; });
+    };
+    const draw = () => {
+      const special = cfg.specials.reduce((a, t) => a + (+t.capacity || 0) - (t.kind === 'kids' ? 1 : 0), 0);
+      const total = cfg.tables * cfg.capacity + special;
+      box.innerHTML = '<div class="row"><label class="f" style="flex:1 1 140px">Nombre de tables<input class="inp" type="number" min="0" max="200" id="cfgN" value="' + cfg.tables + '"></label><label class="f" style="flex:1 1 140px">Places par table<input class="inp" type="number" min="1" max="30" id="cfgC" value="' + cfg.capacity + '"></label></div>' +
+        '<b>Tables particulières</b><p class="hint" style="margin:0">Elles s\'ajoutent aux tables ci-dessus, avec leur propre nombre de places (table d\'honneur, table des mariés, table des enfants…).</p>' +
+        cfg.specials.map((t, i) => '<div class="row" data-sp="' + i + '" style="background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:8px"><input class="inp" style="flex:2 1 150px" data-f="name" value="' + esc(t.name) + '" placeholder="Nom de la table"><input class="inp" style="flex:0 1 90px" type="number" min="1" max="30" data-f="capacity" value="' + t.capacity + '" aria-label="Places"><select class="inp" style="flex:1 1 150px" data-f="kind">' + Object.entries(KINDS).map(([k, l]) => '<option value="' + k + '" ' + (t.kind === k ? 'selected' : '') + '>' + l + '</option>').join('') + '</select><button type="button" class="icon-btn" data-rm="' + i + '" aria-label="Retirer">✕</button></div>').join('') +
+        '<button type="button" class="btn sm" id="cfgAdd">+ Ajouter une table particulière</button>' +
+        '<div class="' + (total < people ? 'warn-box' : 'card') + '" style="padding:10px 12px">' + (cfg.tables + cfg.specials.length) + ' tables · <b>' + total + ' places</b> pour ' + people + ' personnes' + (total < people ? ' : il manque ' + (people - total) + ' place(s), ces personnes resteront « non placées ».' : (total - people ? ' · ' + (total - people) + ' place(s) libre(s)' : '')) + (cfg.specials.some(t => t.kind === 'kids') ? '<br><span class="muted" style="font-size:12.5px">Une place de chaque table des enfants est réservée à la personne qui surveille.</span>' : '') + '</div>' +
+        '<div class="row"><button type="button" class="btn gold" id="cfgGo">↻ Lancer la répartition</button><button type="button" class="btn ghost" id="cfgFit">Ajuster le nombre de tables</button></div>' +
+        (P.tables.length ? '<p class="hint" style="margin:0">Le plan actuel sera remplacé. Tu pourras annuler juste après.</p>' : '');
+      $$('input,select', box).forEach(i => i.onchange = () => { sync(); draw(); });
+      $$('[data-rm]', box).forEach(b => b.onclick = () => { sync(); cfg.specials.splice(+b.dataset.rm, 1); draw(); });
+      $('#cfgAdd', box).onclick = () => { sync(); cfg.specials.push({ name: '', capacity: cfg.capacity, kind: 'std' }); draw(); };
+      $('#cfgFit', box).onclick = () => { sync(); const sp = cfg.specials.reduce((a, t) => a + (+t.capacity || 0) - (t.kind === 'kids' ? 1 : 0), 0); cfg.tables = Math.max(0, Math.ceil((people - sp) / cfg.capacity)); draw(); };
+      $('#cfgGo', box).onclick = async () => {
+        sync(); closeSheet();
+        if (P.tables.length) snap();
+        try { P = await api(BASE + 'tables/auto/', { method: 'POST', json: { config: cfg } }); }
+        catch (e) { toast(e.message); return; }
+        TB.sel = null; TB.a = 0; render();
+        toast(P.last_unplaced ? 'Répartition faite : ' + P.last_unplaced + ' personne(s) sans place, ajoute des tables ou des places' : 'Répartition automatique terminée ✦', TB.undo.length ? undo : null);
+      };
+    };
+    draw();
   }
-  function confirmInline() { return true; } // l'annulation reste possible juste après
 
   function bind() {
     const on = (id, fn) => { const el = $('#' + id); if (el) el.onclick = fn; };
@@ -173,6 +201,7 @@
     $('#etOk', sh).onclick = () => { snap(); const cap = Math.max(1, Math.min(30, +$('#etC', sh).value || t.capacity)); t.name = $('#etN', sh).value.trim(); t.shape = $('#etS', sh).value; t.kind = $('#etK', sh).value; t.seats = (t.seats.concat(Array(30).fill(null))).slice(0, cap); t.capacity = cap; closeSheet(); persist(); };
     $('#etDel', sh).onclick = () => { snap(); P.tables.splice(ti, 1); closeSheet(); persist(); toast('Table supprimée', undo); };
   }
+  window.addEventListener('miel:event-changed', () => api(BASE + 'tables/').then(d => { P = d; render(); }));
   addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(() => P && render(), 200); });
   api(BASE + 'tables/').then(d => { P = d; render(); }).catch(e => toast(e.message));
 })();

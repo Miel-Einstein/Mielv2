@@ -68,7 +68,7 @@ def event_data(e):
         "max_companions": e.max_companions, "ask_languages": e.ask_languages,
         "conversation_languages": e.conversation_languages, "budget": float(e.budget), "currency": e.currency,
         "guest_target": e.guest_target, "song": e.song_id, "telegram_chat_id": e.telegram_chat_id,
-        "social_links": e.social_links,
+        "social_links": e.social_links, "table_config": e.table_config,
         "start_ms": e.start_datetime().timestamp() * 1000 if e.start_datetime() else None,
         "urls": {"rsvp": e.public_url("rsvp"), "site": e.public_url("event_home"), "wall": e.public_url("wall"),
                  "screen": e.public_url("screen"), "map": e.public_url("map"),

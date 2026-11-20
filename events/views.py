@@ -1,16 +1,18 @@
 """Pages HTML (organisateur et invités)."""
-from django import forms
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import translation
 from django.views.decorators.http import require_POST
 
 from events import serializers as S
-from events.models import EventType, Event, Reaction
+from events.models import EventType, Event, Reaction, TermsAcceptance
 from events.services import pdf, seating
 from events.services.defaults import seed_event_defaults
 
@@ -18,21 +20,37 @@ LANG_COOKIE = "miel_lang"
 
 
 # ---------------------------------------------------------------- comptes
-class SignupForm(UserCreationForm):
-    email = forms.EmailField(required=True, label="E-mail", help_text="Pour recevoir les rappels de l'Alerter")
-
-    class Meta:
-        model = User
-        fields = ("username", "email")
-
-
 def signup(request):
-    form = SignupForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        user = form.save()
-        login(request, user)
-        return redirect("home")
-    return render(request, "registration/signup.html", {"form": form})
+    """Inscription : les conditions d'utilisation doivent être acceptées (pop-up)."""
+    errors, data = [], {}
+    if request.method == "POST":
+        data = {"username": request.POST.get("username", "").strip(), "email": request.POST.get("email", "").strip()}
+        password, confirmation = request.POST.get("password", ""), request.POST.get("confirmation", "")
+        if not all([data["username"], data["email"], password, confirmation]):
+            errors.append("Merci de remplir tous les champs")
+        if password != confirmation:
+            errors.append("Attention : les deux mots de passe doivent être identiques")
+        try:
+            validate_email(data["email"])
+        except ValidationError:
+            errors.append("Merci d'entrer une adresse e-mail valide")
+        if data["username"] and User.objects.filter(username__iexact=data["username"]).exists():
+            errors.append("Ce nom d'utilisateur existe déjà")
+        if data["email"] and User.objects.filter(email__iexact=data["email"]).exists():
+            errors.append("Un compte existe déjà avec cet e-mail")
+        if request.POST.get("terms_accepted") != "1":
+            errors.append("Vous devez accepter les conditions d'utilisation pour vous inscrire sur Miel.")
+        if not errors:
+            try:
+                validate_password(password, User(username=data["username"], email=data["email"]))
+            except ValidationError as e:
+                errors += list(e.messages)
+        if not errors:
+            user = User.objects.create_user(data["username"], data["email"], password)
+            TermsAcceptance.objects.create(user=user)
+            login(request, user)
+            return redirect("home")
+    return render(request, "registration/signup.html", {"errors": errors, "data": data})
 
 
 # ---------------------------------------------------------------- organisateur
@@ -66,7 +84,9 @@ def _organizer_ctx(event, page):
 
 @login_required
 def bot(request, slug):
-    return render(request, "events/bot.html", _organizer_ctx(owned(request, slug), "bot"))
+    """L'assistant est un pop-up disponible sur toutes les pages : on ouvre le panneau avec le pop-up."""
+    owned(request, slug)
+    return redirect(reverse("panel", kwargs={"slug": slug}) + "?bot=1")
 
 
 @login_required
@@ -124,7 +144,8 @@ def event_home(request, slug):
     event = get_object_or_404(Event, slug=slug)
     if not event.site_enabled:
         return redirect("rsvp", slug=slug)
-    tpl = "events/site_A.html" if event.site_template == "A" else "events/site_B.html"
+    choice = request.GET.get("tpl") if request.GET.get("tpl") in ("A", "B") else event.site_template  # ?tpl= : aperçu
+    tpl = "events/site_A.html" if choice == "A" else "events/site_B.html"
     return guest_render(request, tpl, event, {"venues": event.venues.all(), "story": event.story.all()})
 
 

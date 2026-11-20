@@ -106,6 +106,7 @@ class Event(models.Model):
     telegram_chat_id = models.CharField(max_length=64, blank=True, help_text="Groupe Telegram qui reçoit les photos du mur")
     social_links = models.JSONField(default=dict, blank=True)
     share_token = models.CharField(max_length=40, default=new_token, unique=True)
+    table_config = models.JSONField(default=dict, blank=True, help_text="Dernière configuration du plan : nombre de tables, places, tables particulières")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -421,3 +422,11 @@ class GiftReservation(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     delivery_option = models.ForeignKey(DeliveryOption, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(default=timezone.now)
+
+
+class TermsAcceptance(models.Model):
+    """Acceptation des conditions d'utilisation à l'inscription."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="terms")
+    version = models.CharField(max_length=20, default="2026-11")
+    accepted_at = models.DateTimeField(auto_now_add=True)

@@ -19,7 +19,7 @@
 {% block top %}
 <header class="guest-top">
   <a href="{% url 'event_home' event.slug %}?lang={{ lang }}" style="text-decoration:none;font-family:var(--display);font-style:italic;font-size:22px;color:var(--honey)">{{ event.title|tr:lang }}</a>
-  {% if langs|length > 1 %}<nav class="langs" aria-label="{% translate 'Langue' %}">{% for code in langs %}<a href="?lang={{ code }}" class="{% if code == lang %}on{% endif %}">{% if code == 'fr' %}🇫🇷 FR{% elif code == 'en' %}🇬🇧 EN{% elif code == 'it' %}🇮🇹 IT{% else %}🇨🇩 LN{% endif %}</a>{% endfor %}</nav>{% endif %}
+  {% if langs|length > 1 %}<nav class="langs" aria-label="{% translate 'Langue' %}">{% for code in langs %}<a href="?lang={{ code }}" class="{% if code == lang %}on{% endif %}">{% if code == 'fr' %}🇫🇷 FR{% elif code == 'en' %}🇬🇧 EN{% elif code == 'it' %}🇮🇹 IT{% else %}🇨🇬 LN{% endif %}</a>{% endfor %}</nav>{% endif %}
 </header>
 {% endblock %}
 {% block main %}{% endblock %}

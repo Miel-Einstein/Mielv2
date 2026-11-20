@@ -2,7 +2,6 @@
 {% block title %}Panneau · {{ event }}{% endblock %}
 {% block main %}<div class="wrap"><p class="muted">Chargement du panneau…</p></div>{% endblock %}
 {% block scripts %}
-<script>window.EVENT={{ event_json|to_json }};</script>
 <script src="{% static 'miel/js/panel.js' %}"></script>
 <script>Miel.momentLoop("{{ event.slug }}","{{ event.languages.0 }}");</script>
 {% endblock %}

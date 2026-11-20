@@ -66,29 +66,59 @@ def persons(event):
     return out
 
 
-def compute_plan(event, persons_list, cap=8, kids_cap=10):
-    """Calcule un plan sans toucher à la base. Renvoie une liste de dict tables."""
+def default_config(event, persons_list=None, cap=8):
+    """Configuration proposée par défaut : tables particulières + assez de tables standard."""
+    ps = persons_list if persons_list is not None else persons(event)
+    specials = []
+    if event.categories.filter(is_honor=True).exists():
+        specials.append({"name": "Table d'honneur", "capacity": cap, "kind": "honor"})
+    if event.kids_table and any(p.zone == "kids" for p in ps):
+        specials.append({"name": "Table des enfants", "capacity": 10, "kind": "kids"})
+    special_seats = sum(t["capacity"] for t in specials)
+    n = max(1, -(-max(0, len(ps) - special_seats) // cap))  # arrondi au supérieur
+    return {"tables": n, "capacity": cap, "specials": specials}
+
+
+def normalize_config(config):
+    cap = max(1, min(30, int(config.get("capacity") or 8)))
+    n = max(0, min(200, int(config.get("tables") or 0)))
+    specials = []
+    for t in (config.get("specials") or [])[:50]:
+        kind = t.get("kind") if t.get("kind") in ("std", "honor", "kids") else "std"
+        specials.append({"name": (t.get("name") or "")[:120], "capacity": max(1, min(30, int(t.get("capacity") or cap))), "kind": kind})
+    return {"tables": n, "capacity": cap, "specials": specials}
+
+
+def compute_plan(event, persons_list, config):
+    """Calcule un plan sans toucher à la base.
+
+    config = {"tables": nombre de tables standard, "capacity": places par table standard,
+              "specials": [{"name", "capacity", "kind": honor|kids|std}, ...]}
+    Le nombre de tables est respecté : s'il manque des places, les personnes restantes
+    sont laissées « non placées » (renvoyées dans unplaced).
+    """
+    config = normalize_config(config)
     order = list(event.categories.values_list("id", flat=True))
     honor = set(event.categories.filter(is_honor=True).values_list("id", flat=True))
     pindex = {p.key: p for p in persons_list}
+    tables = [{"name": t["name"], "capacity": t["capacity"], "kind": t["kind"], "seats": [None] * t["capacity"]} for t in config["specials"]]
+    tables += [{"name": "", "capacity": config["capacity"], "kind": "std", "seats": [None] * config["capacity"]} for _ in range(config["tables"])]
+    kids_tables = [t for t in tables if t["kind"] == "kids"]
+    for kt in kids_tables:
+        kt["seats"][0] = SUPERVISOR  # place réservée à la personne qui surveille
 
+    # Sans table des enfants, les enfants restent avec leurs parents.
     groups = {}
+    kids = []
     for p in persons_list:
-        if p.zone == "kids":
-            continue
-        groups.setdefault(p.gid, []).append(p)
+        if p.zone == "kids" and kids_tables:
+            kids.append(p)
+        else:
+            groups.setdefault(p.gid, []).append(p)
 
     def sort_key(g):
         c = g[0].cat_id
         return (order.index(c) if c in order else len(order), (g[0].langs or [""])[0], -len(g), g[0].gid)
-
-    group_list = sorted(groups.values(), key=sort_key)
-    tables = []
-
-    def new_table(name, capacity, kind):
-        t = {"name": name, "capacity": capacity, "kind": kind, "seats": [None] * capacity}
-        tables.append(t)
-        return t
 
     def free(t):
         return t["seats"].count(None)
@@ -99,57 +129,61 @@ def compute_plan(event, persons_list, cap=8, kids_cap=10):
     def langs(t):
         return {l for k in t["seats"] if k and k in pindex for l in pindex[k].langs}
 
-    def place(t, g):
-        i = 0
-        for p in g:
-            while t["seats"][i] is not None:
-                i += 1
-            t["seats"][i] = p.key
+    def place(t, people):
+        for p in people:
+            t["seats"][t["seats"].index(None)] = p.key
 
-    if honor:
-        new_table("Table d'honneur", cap, "honor")
-
-    for g in group_list:
+    unplaced = []
+    for g in sorted(groups.values(), key=sort_key):
         is_honor = g[0].cat_id in honor
-        size = len(g)
-        if size > cap:  # groupe plus grand qu'une table : on le découpe
-            chunks = [g[i:i + cap] for i in range(0, size, cap)]
+        pool = [t for t in tables if t["kind"] == "honor"] if is_honor else []
+        pool += [t for t in tables if t["kind"] == "std"]
+        cand = [t for t in pool if free(t) >= len(g)]
+        best = None
+        if is_honor:
+            best = next((t for t in cand if t["kind"] == "honor"), None)
+        best = best or (next((t for t in cand if g[0].cat_id in cats(t) and set(g[0].langs) & langs(t)), None)
+                        or next((t for t in cand if g[0].cat_id in cats(t)), None)
+                        or next((t for t in cand if not any(t["seats"])), None)
+                        or next((t for t in cand), None))
+        if best:
+            place(best, g)
+            continue
+        # Le groupe ne tient sur aucune table : on le répartit sur les places libres restantes.
+        rest = list(g)
+        for t in sorted(pool, key=free, reverse=True):
+            while rest and free(t):
+                place(t, [rest.pop(0)])
+        unplaced += rest
+
+    for k in sorted(kids, key=lambda p: (p.age or 0, p.gid)):
+        kt = next((t for t in kids_tables if free(t)), None)
+        if kt:
+            place(kt, [k])
         else:
-            chunks = [g]
-        for chunk in chunks:
-            kind = "honor" if is_honor else "std"
-            cand = [t for t in tables if t["kind"] == kind and free(t) >= len(chunk)]
-            best = (next((t for t in cand if chunk[0].cat_id in cats(t) and set(chunk[0].langs) & langs(t)), None)
-                    or next((t for t in cand if chunk[0].cat_id in cats(t)), None)
-                    or next((t for t in cand if not any(t["seats"])), None))
-            if best is None and is_honor:
-                best = next((t for t in tables if t["kind"] == "std" and free(t) >= len(chunk)), None)
-            if best is None:
-                best = new_table("", cap, "std")
-            place(best, chunk)
-
-    kids = [p for p in persons_list if p.zone == "kids"]
-    if event.kids_table and kids:
-        kt = None
-        for k in sorted(kids, key=lambda p: (p.age or 0, p.gid)):
-            if kt is None or free(kt) == 0:
-                kt = new_table("Table des enfants", kids_cap, "kids")
-                kt["seats"][0] = SUPERVISOR
-            kt["seats"][kt["seats"].index(None)] = k.key
-    return tables
+            st = next((t for t in tables if t["kind"] == "std" and free(t)), None)
+            if st:
+                place(st, [k])
+            else:
+                unplaced.append(k)
+    return tables, [p.key for p in unplaced]
 
 
-def assign(event, cap=8, kids_cap=10):
+def assign(event, config=None):
     """Recalcule et enregistre le plan de table de l'événement."""
     from events.models import Table
 
-    plan = compute_plan(event, persons(event), cap, kids_cap)
+    ps = persons(event)
+    config = normalize_config(config or event.table_config or default_config(event, ps))
+    plan, unplaced = compute_plan(event, ps, config)
+    event.table_config = config
+    event.save(update_fields=["table_config"])
     event.tables.all().delete()
     Table.objects.bulk_create([
         Table(event=event, order=i, name=t["name"], capacity=t["capacity"], kind=t["kind"], seats=t["seats"])
         for i, t in enumerate(plan)
     ])
-    return event.tables.all()
+    return unplaced
 
 
 def clean_seats(event):

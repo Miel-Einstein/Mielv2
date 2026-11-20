@@ -408,6 +408,7 @@ def tables_payload(event):
         "unplaced": [p.key for p in ps if p.key not in placed],
         "categories": [S.category_data(c) for c in event.categories.all()],
         "supervisor": event.supervisor_name,
+        "config": event.table_config or seating.default_config(event, ps),
     }
 
 
@@ -444,8 +445,11 @@ def tables(request, event):
 @owner_api
 def tables_auto(request, event):
     d = body(request)
-    seating.assign(event, cap=int(d.get("capacity") or 8), kids_cap=int(d.get("kids_capacity") or 10))
-    return ok(tables_payload(event))
+    config = d.get("config") or None
+    unplaced = seating.assign(event, config)
+    data = tables_payload(event)
+    data["last_unplaced"] = len(unplaced)
+    return ok(data)
 
 
 # ---------------------------------------------------------------- invités & tableau de bord

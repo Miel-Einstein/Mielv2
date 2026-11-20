@@ -1,10 +1,16 @@
-{% extends "base_app.html" %}
+{% extends "registration/auth_base.html" %}
 {% block title %}Connexion · Miel{% endblock %}
-{% block main %}
-<div class="card auth-box">
-  <h1 style="font-size:34px;font-style:italic;color:var(--honey-soft)">Connexion</h1>
-  <p class="muted">Retrouvez vos événements et votre assistant.</p>
-  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn gold" type="submit" style="width:100%">Se connecter</button></form>
-  <p class="muted" style="margin-top:14px">Pas encore de compte ? <a href="{% url 'signup' %}">Créer un compte</a></p>
+{% block body %}
+<div class="login-box">
+  <h2>🐝 Connexion</h2>
+  <form method="post" action="{% url 'login' %}" autocomplete="on">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="user-box"><input type="text" name="username" id="id_username" placeholder="nom d'utilisateur" value="{{ form.username.value|default:'' }}" autocomplete="username" required aria-label="Nom d'utilisateur"></div>
+    <div class="user-box"><input type="password" name="password" id="id_password" class="passes" placeholder="mot de passe" autocomplete="current-password" required aria-label="Mot de passe"><button type="button" class="eye-icon" aria-label="Afficher le mot de passe">👁️</button></div>
+    {% if form.errors %}<div class="error-message">⚠️ Nom d'utilisateur ou mot de passe incorrect.</div>{% endif %}
+    <button type="submit" class="anim-btn"><span></span><span></span><span></span><span></span>Se connecter</button>
+  </form>
+  <div class="alt">Pas encore de compte ? <a href="{% url 'signup' %}">Créer un compte</a></div>
 </div>
 {% endblock %}

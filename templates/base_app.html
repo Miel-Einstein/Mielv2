@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static miel %}<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -18,7 +18,6 @@
     <a class="brand" href="{% url 'home' %}" style="text-decoration:none"><b>Miel</b><small>{% if event %}{{ event }}{% else %}Organisateur{% endif %}</small></a>
     {% if event %}
     <nav class="tabs" aria-label="Navigation de l'événement">
-      <a href="{% url 'bot' event.slug %}" class="{% if page == 'bot' %}on{% endif %}">🤖 Assistant</a>
       <a href="{% url 'panel' event.slug %}" class="{% if page == 'panel' %}on{% endif %}">📊 Panneau</a>
       {% if 'tables' in event.services %}<a href="{% url 'tables' event.slug %}" class="{% if page == 'tables' %}on{% endif %}">🪑 Plan de table</a>{% endif %}
       {% if 'cadeaux' in event.services %}<a href="{% url 'gifts_manager' event.slug %}" class="{% if page == 'gifts' %}on{% endif %}">🎁 Cadeaux</a>{% endif %}
@@ -37,6 +36,22 @@
 <div class="toast" id="toast"></div>
 <script>window.MIEL_I18N={undo:"Annuler",getReady:"Préparez-vous…"};</script>
 <script src="{% static 'miel/js/miel.js' %}"></script>
+{% if event and event_json %}
+<button type="button" class="bot-fab" id="botFab" aria-label="Ouvrir l'assistant"><span class="avatar" aria-hidden="true">🍯</span>Miel</button>
+<div class="bot-pop" id="botPop" hidden role="dialog" aria-modal="true" aria-labelledby="botTitle">
+  <div class="bot-card" id="botCard">
+    <button type="button" class="bot-close" id="botClose" aria-label="Fermer">✕</button>
+    <div class="bot-orn" aria-hidden="true">✦ ✦ ✦</div>
+    <div class="bot-title" id="botTitle">Miel</div>
+    <div class="bot-orn" aria-hidden="true">✦ ✦ ✦</div>
+    <div class="bot-label" id="botLabel"></div>
+    <div id="botBody" aria-live="polite"></div>
+    <div class="bot-tools"><button type="button" id="botMenu">☰ Étapes</button><button type="button" id="botPause">⏸ Pause</button><button type="button" id="botPrev">👁 Aperçu</button><button type="button" id="botHistBtn">💬 Historique</button></div>
+  </div>
+</div>
+<script>window.EVENT={{ event_json|to_json }};</script>
+<script src="{% static 'miel/js/bot.js' %}"></script>
+{% endif %}
 {% if event %}
 <script>
 (function(){

@@ -60,10 +60,25 @@ class SeatingTests(TestCase):
         self.guest("B", self.fam, langs=("fr",), comps=2)
         a = self.guest("A", self.fam, langs=("it",), comps=2)
         c = self.guest("C", self.fam, langs=("it",))
-        seating.assign(self.ev, cap=4)
+        seating.assign(self.ev, {"tables": 3, "capacity": 4, "specials": []})
         ta, _ = seating.seat_of(self.ev, seating.person_key(a.id, "p"))
         tc, _ = seating.seat_of(self.ev, seating.person_key(c.id, "p"))
         self.assertEqual(ta.id, tc.id)
+
+    def test_number_of_tables_and_special_capacities(self):
+        for i in range(10):
+            self.guest(f"G{i}", self.fam)
+        unplaced = seating.assign(self.ev, {"tables": 2, "capacity": 3, "specials": [{"name": "Mariés", "capacity": 2, "kind": "std"}]})
+        caps = [t.capacity for t in self.ev.tables.all()]
+        self.assertEqual(caps, [2, 3, 3])  # le nombre de tables est respecté
+        self.assertEqual(len(unplaced), 2)  # 10 personnes pour 8 places
+        self.assertEqual(self.ev.table_config["tables"], 2)
+
+    def test_kids_with_parents_without_kids_table(self):
+        g = self.guest("Marie", self.fam, kids=(7,))
+        seating.assign(self.ev, {"tables": 1, "capacity": 8, "specials": []})
+        t, _ = seating.seat_of(self.ev, seating.person_key(g.id, "k", 0))
+        self.assertIsNotNone(t)
 
     def test_deterministic(self):
         for i in range(12):
@@ -180,7 +195,8 @@ class PageTests(TestCase):
     def test_pages_render(self):
         user, ev = make_event()
         self.client.login(username="org", password="pw-12345678")
-        for url in ["/", f"/app/e/{ev.slug}/", f"/app/e/{ev.slug}/bot/", f"/app/e/{ev.slug}/tables/", f"/app/e/{ev.slug}/cadeaux/"]:
+        self.assertRedirects(self.client.get(f"/app/e/{ev.slug}/bot/"), f"/app/e/{ev.slug}/?bot=1")
+        for url in ["/", f"/app/e/{ev.slug}/", f"/app/e/{ev.slug}/tables/", f"/app/e/{ev.slug}/cadeaux/", f"/e/{ev.slug}/?tpl=B"]:
             self.assertEqual(self.client.get(url).status_code, 200, url)
         self.client.logout()
         for url in [f"/e/{ev.slug}/", f"/e/{ev.slug}/rsvp/", f"/e/{ev.slug}/rsvp/?lang=en", f"/e/{ev.slug}/mur/", f"/e/{ev.slug}/ecran/",
@@ -191,3 +207,19 @@ class PageTests(TestCase):
         ev.save()
         self.assertEqual(self.client.get(f"/e/{ev.slug}/").status_code, 200)
         self.assertEqual(self.client.get(f"/app/e/{ev.slug}/plan.pdf").status_code, 302)  # connexion requise
+
+
+class AuthTests(TestCase):
+    def test_signup_requires_terms(self):
+        data = {"username": "awa", "email": "awa@exemple.com", "password": "Miel-secret-2026", "confirmation": "Miel-secret-2026"}
+        r = self.client.post("/inscription/", data)
+        self.assertContains(r, "accepter les conditions")
+        self.assertFalse(User.objects.filter(username="awa").exists())
+        r = self.client.post("/inscription/", {**data, "terms_accepted": "1"})
+        self.assertRedirects(r, "/")
+        self.assertTrue(User.objects.get(username="awa").terms)
+
+    def test_signup_password_mismatch_and_login_page(self):
+        r = self.client.post("/inscription/", {"username": "x", "email": "x@exemple.com", "password": "a", "confirmation": "b", "terms_accepted": "1"})
+        self.assertContains(r, "identiques")
+        self.assertEqual(self.client.get("/connexion/").status_code, 200)

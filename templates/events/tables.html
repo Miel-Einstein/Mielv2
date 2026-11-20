@@ -2,6 +2,5 @@
 {% block title %}Plan de table · {{ event }}{% endblock %}
 {% block main %}<div class="wrap"><p class="muted">Chargement du plan…</p></div>{% endblock %}
 {% block scripts %}
-<script>window.EVENT={{ event_json|to_json }};</script>
 <script src="{% static 'miel/js/tables.js' %}"></script>
 {% endblock %}
