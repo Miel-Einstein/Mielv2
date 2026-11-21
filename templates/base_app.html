@@ -13,7 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 {% block head %}{% endblock %}
 </head>
-<body>
+<body data-page="{{ page|default:'' }}">
 {% csrf_token %}
 <div class="app">
   <header class="top">
@@ -70,14 +70,17 @@
 </script>{% endif %}
 {% if event and event_json %}
 <button type="button" class="bot-fab" id="botFab" aria-label="Ouvrir l'assistant"><span class="avatar" aria-hidden="true">🍯</span>Miel</button>
+<button type="button" class="fab-bubble" id="fabBubble" hidden>💡 Besoin d'aide ?</button>
 <div class="bot-pop" id="botPop" hidden role="dialog" aria-modal="true" aria-labelledby="botTitle">
   <div class="bot-card" id="botCard">
     <button type="button" class="bot-close" id="botClose" aria-label="Fermer">✕</button>
+    <div class="bot-voice-tools"><button type="button" id="botVoice" aria-pressed="false" aria-label="Lire à voix haute" title="Lire à voix haute">🔇</button><button type="button" id="botReplay" hidden aria-label="Réécouter" title="Réécouter">↻</button><button type="button" id="botRate" hidden aria-label="Vitesse de la voix" title="Vitesse de la voix">1×</button></div>
     <div class="bot-orn" aria-hidden="true">✦ ✦ ✦</div>
     <div class="bot-title" id="botTitle">Miel</div>
     <div class="bot-orn" aria-hidden="true">✦ ✦ ✦</div>
     <div class="bot-label" id="botLabel"></div>
     <div id="botBody" aria-live="polite"></div>
+    <form class="bot-askbar" id="botAskForm" autocomplete="off"><input id="botAskQ" maxlength="300" placeholder="Pose ta question…" aria-label="Pose ta question"><button type="submit" aria-label="Envoyer la question">➤</button></form>
     <div class="bot-tools"><button type="button" id="botMenu">☰ Étapes</button><button type="button" id="botPause">⏸ Pause</button><button type="button" id="botPrev">👁 Aperçu</button><button type="button" id="botHistBtn">💬 Historique</button></div>
   </div>
 </div>

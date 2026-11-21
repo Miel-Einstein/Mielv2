@@ -34,16 +34,18 @@ def send_telegram(chat_id, text):
         return False
 
 
-def send_telegram_media(chat_id, file_obj, caption="", is_video=False):
-    """Envoie une photo ou une vidéo du mur des vœux au groupe Telegram."""
+def send_telegram_media(chat_id, file_obj, caption="", is_video=False, name="photo.jpg", content=None):
+    """Envoie une photo ou une vidéo du mur des vœux à un groupe ou canal Telegram."""
     if not (settings.TELEGRAM_BOT_TOKEN and chat_id):
         return False
     method, field = ("sendVideo", "video") if is_video else ("sendPhoto", "photo")
+    if content is None:
+        content, name = file_obj.read(), file_obj.name
     try:
         r = requests.post(
             f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/{method}",
             data={"chat_id": chat_id, "caption": caption[:1000]},
-            files={field: (file_obj.name, file_obj.read())}, timeout=60,
+            files={field: (name, content)}, timeout=60,
         )
         return r.ok
     except requests.RequestException as exc:  # pragma: no cover

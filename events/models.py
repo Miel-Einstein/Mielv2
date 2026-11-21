@@ -117,7 +117,9 @@ class Event(models.Model):
     guest_target = models.PositiveIntegerField(default=0)
     # Musique, partage
     song = models.ForeignKey(Song, null=True, blank=True, on_delete=models.SET_NULL)
-    telegram_chat_id = models.CharField(max_length=64, blank=True, help_text="Groupe Telegram qui reçoit les photos du mur")
+    telegram_chat_id = models.CharField(max_length=64, blank=True, help_text="Ancien champ (un seul groupe) : remplacé par TelegramChannel")
+    # Jeton à coller dans un groupe ou un canal Telegram pour le relier à l'événement (64 caractères hexadécimaux)
+    telegram_token = models.CharField(max_length=64, blank=True, db_index=True)
     social_links = models.JSONField(default=dict, blank=True)
     share_token = models.CharField(max_length=40, default=new_token, unique=True)
     table_config = models.JSONField(default=dict, blank=True, help_text="Dernière configuration du plan : nombre de tables, places, tables particulières")
@@ -204,6 +206,24 @@ class StoryStep(models.Model):
 
     class Meta:
         ordering = ["order", "id"]
+
+
+class TelegramChannel(models.Model):
+    """Groupe ou canal Telegram relié à un événement : il reçoit en direct les photos du mur des vœux."""
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="telegram_channels")
+    chat_id = models.CharField(max_length=64)
+    title = models.CharField(max_length=255, blank=True)
+    kind = models.CharField(max_length=20, blank=True, help_text="group, supergroup ou channel")
+    active = models.BooleanField(default=True)
+    linked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("event", "chat_id")]
+        ordering = ["linked_at"]
+
+    def __str__(self):
+        return self.title or self.chat_id
 
 
 class GalleryImage(models.Model):
@@ -472,3 +492,51 @@ class TermsAcceptance(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="terms")
     version = models.CharField(max_length=20, default="2026-11")
     accepted_at = models.DateTimeField(auto_now_add=True)
+
+
+class HelpEntry(models.Model):
+    """Réponse de l'aide de l'assistant (modifiable dans l'admin, active tout de suite)."""
+
+    key = models.SlugField(max_length=60, unique=True, null=True, blank=True, help_text="Réponses de départ de Miel ; vide pour celles créées dans l'admin")
+    category = models.CharField(max_length=30, blank=True)
+    context = models.CharField(max_length=40, blank=True, help_text="Écran où la réponse est la plus utile : bot:<étape>, panel, tables, gifts… (vide = partout)")
+    keywords = models.TextField(blank=True, help_text="Mots-clés et synonymes, toutes langues, séparés par des espaces")
+    question = models.JSONField(default=dict, help_text='Par langue, ex. {"fr": "…", "en": "…"}')
+    answer = models.JSONField(default=dict, help_text="Par langue")
+    actions = models.JSONField(default=list, blank=True, help_text='Boutons, ex. [{"label": {"fr": "Aller à l\'étape"}, "step": "photos"}]')
+    active = models.BooleanField(default=True)
+    hits = models.PositiveIntegerField(default=0)
+    helpful = models.PositiveIntegerField(default=0)
+    not_helpful = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["category", "id"]
+        verbose_name = "réponse de l'aide"
+        verbose_name_plural = "aide : réponses"
+
+    def __str__(self):
+        return self.question.get("fr") or next(iter(self.question.values()), "") or self.key or str(self.pk)
+
+
+class UnansweredQuestion(models.Model):
+    """Question à laquelle l'assistant n'a pas su répondre : à traiter dans l'admin."""
+
+    text = models.CharField(max_length=500)
+    normalized = models.CharField(max_length=500, db_index=True)
+    lang = models.CharField(max_length=5, default="fr")
+    context = models.CharField(max_length=40, blank=True)
+    count = models.PositiveIntegerField(default=1)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    event = models.ForeignKey(Event, null=True, blank=True, on_delete=models.SET_NULL)
+    first_at = models.DateTimeField(auto_now_add=True)
+    last_at = models.DateTimeField(auto_now=True)
+    resolved = models.ForeignKey(HelpEntry, null=True, blank=True, on_delete=models.SET_NULL, help_text="Réponse créée pour cette question")
+
+    class Meta:
+        ordering = ["resolved", "-count", "-last_at"]
+        verbose_name = "question sans réponse"
+        verbose_name_plural = "aide : questions sans réponse"
+
+    def __str__(self):
+        return self.text

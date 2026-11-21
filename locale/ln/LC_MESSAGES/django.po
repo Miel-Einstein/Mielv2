@@ -16,6 +16,9 @@ msgstr "Nkombo na yo"
 msgid "Nom"
 msgstr "Nkombo"
 
+msgid "Groupes connectés"
+msgstr "Masanga ekangami"
+
 msgid "Laissez un vœu"
 msgstr "Tika lobondeli"
 
@@ -24,3 +27,9 @@ msgstr "Maloba na yo ya bolingo..."
 
 msgid "Envoyer mon vœu"
 msgstr "Tinda lobondeli na ngai"
+
+msgid "Envoyé à"
+msgstr "Etindami na"
+
+msgid "groupe(s) Telegram"
+msgstr "lisanga/masanga ya Telegram"

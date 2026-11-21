@@ -90,3 +90,14 @@ L'interface invités est traduite avec l'i18n de Django : Google Translate n'est
 - **Paiement et abonnements** : prochaine étape.
 - **WhatsApp Business API** : le code est prêt (`events/services/notify.py`). Il faut un compte Meta validé, puis remplir `WHATSAPP_TOKEN` et `WHATSAPP_PHONE_ID`.
 - **Éditeur photo avancé du mur** (filtres, stickers, recadrage) et **galerie photos du site** de l'ancienne version : à reprendre.
+
+## Photos du mur vers Telegram (liaison par jeton)
+1. Crée le bot avec @BotFather, puis mets dans les variables d'environnement `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (sans @) et `TELEGRAM_WEBHOOK_SECRET` (au moins 16 caractères).
+2. Dans @BotFather : `/setprivacy` → **Disable**, pour que le bot lise le jeton collé dans un groupe. (Le bouton « Ajouter Miel à un groupe » marche même sans cela.)
+3. Une fois le site en ligne : `python manage.py telegram_setup --url https://ton-domaine` (webhook). En local, sans adresse publique : `python manage.py telegram_setup --poll`.
+4. L'organisateur relie ses groupes ou canaux à l'étape « Photos sur Telegram » de l'assistant ; chaque photo du mur part vers tous les groupes reliés.
+
+## Aide de l'assistant
+- Les réponses de départ (`events/help_kb.py`) sont chargées au premier `migrate`. `python manage.py load_help --update` met à jour les réponses de Miel sans toucher à celles créées dans l'admin.
+- Admin → « aide : questions sans réponse » : les questions que l'assistant n'a pas comprises, classées par nombre de demandes, avec un bouton « Créer la réponse ». La nouvelle réponse sert tout de suite.
+- Admin → « aide : réponses » : modifier un texte (par exemple les prix), ajouter des mots-clés, voir les 👍 / 👎.

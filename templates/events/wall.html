@@ -9,6 +9,7 @@
   </div>
   {% if done_moments %}<h3 style="color:#b45f2b;font-style:italic;font-size:24px;margin:16px 0 8px">{% translate "Moments forts" %}</h3>
   <div class="frise">{% for m in done_moments %}<div class="mo">{% if m.photo and not m.launched_as_message %}<div class="im" style="background-image:url('{{ m.photo.url }}')"></div>{% else %}<div class="im" style="background:linear-gradient(135deg,#3a2617,#6b3f1f)"></div>{% endif %}<b>{{ m.title|tr:lang }}</b></div>{% endfor %}</div>{% endif %}
+  {% if tg_channels %}<div class="tg-groups"><b>✈️ {% translate "Groupes connectés" %} ({{ tg_channels|length }})</b><div>{% for c in tg_channels %}<span class="tg-badge" translate="no">{% if c.kind == "channel" %}📢{% else %}👥{% endif %} {{ c.title }}</span>{% endfor %}</div></div>{% endif %}
   <div id="writeBox"></div>
   <div class="wishes" id="wishes" aria-live="polite"></div>
 </div></div>
@@ -21,16 +22,17 @@
   const T={leave:"{% translate 'Laissez un vœu' %}",yourName:"{% translate 'Votre prénom et nom' %}",yourMsg:"{% translate 'Votre message…' %}",sendWish:"{% translate 'Envoyer mon vœu' %}",
     noCard:"{% translate 'Vous n’avez pas votre carte ? Dites-nous qui vous êtes, une seule fois.' %}",known:"{% translate 'Reconnu·e grâce au QR code de votre carte.' %}",
     del:"{% translate 'Supprimer mon vœu' %}",photo:"{% translate 'Envoyer une photo ou une vidéo' %}",photoOk:"{% translate 'Photo envoyée aux mariés 📸' %}",caption:"{% translate 'Légende (facultatif)' %}",
-    hello:"{% translate 'Bonjour' %}"};
+    hello:"{% translate 'Bonjour' %}",sent:"{% translate 'Envoyé à' %}",groups:"{% translate 'groupe(s) Telegram' %}"};
+  const TG={{ tg_channels|length }};
   const qs=new URLSearchParams(location.search);
   let token=qs.get('g');try{if(token)localStorage.setItem('miel_g_'+SLUG,token);else token=localStorage.getItem('miel_g_'+SLUG)}catch(e){}
   let me=null,wishes=[];
   async function who(){
     if(token){const r=await api('/api/p/'+SLUG+'/me/?g='+encodeURIComponent(token));if(r.known)me={token,...r}}
     if(me){$('#whoBox').innerHTML=`<div style="font-size:15px">👋 ${esc(T.hello)} <b>${esc(me.first)}</b> !</div><div class="muted" style="font-size:12.5px">${esc(T.known)}</div>`;
-      $('#writeBox').innerHTML=`<form class="card grid" id="wishForm" style="margin:16px 0"><b style="color:#b45f2b">✍️ ${esc(T.leave)}</b><textarea class="inp" id="wishTx" rows="2" maxlength="600" placeholder="${esc(T.yourMsg)}" required></textarea><div class="row"><button class="btn gold" type="submit">${esc(T.sendWish)}</button><label class="btn">📸 ${esc(T.photo)}<input type="file" accept="image/*,video/*" hidden id="media"></label></div></form>`;
+      $('#writeBox').innerHTML=`<form class="card grid" id="wishForm" style="margin:16px 0"><b style="color:#b45f2b">✍️ ${esc(T.leave)}</b><textarea class="inp" id="wishTx" rows="2" maxlength="600" placeholder="${esc(T.yourMsg)}" required></textarea><div class="row"><button class="btn gold" type="submit">${esc(T.sendWish)}</button>${TG?`<label class="btn">📸 ${esc(T.photo)}<input type="file" accept="image/*,video/*" hidden id="media"></label>`:''}</div></form>`;
       $('#wishForm').onsubmit=async e=>{e.preventDefault();const tx=$('#wishTx').value.trim();if(!tx)return;try{await api('/api/p/'+SLUG+'/wishes/',{method:'POST',json:{token,text:tx}});$('#wishTx').value='';Miel.floatEmoji('💛');load()}catch(err){toast(err.message)}};
-      $('#media').onchange=async e=>{const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('token',token);fd.append('file',f);fd.append('caption',$('#wishTx').value);try{await api('/api/p/'+SLUG+'/media/',{method:'POST',form:fd});toast(T.photoOk)}catch(err){toast(err.message)}};}
+      const md=$('#media');if(md)md.onchange=async e=>{const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('token',token);fd.append('file',f);fd.append('caption',$('#wishTx').value);try{const r=await api('/api/p/'+SLUG+'/media/',{method:'POST',form:fd});toast(T.photoOk+' · '+T.sent+' '+r.sent+' '+T.groups);Miel.floatEmoji('📸')}catch(err){toast(err.message)}e.target.value=''};}
     else{$('#whoBox').innerHTML=`<div class="muted" style="font-size:13px;margin-bottom:6px">${esc(T.noCard)}</div><div class="row"><input class="inp" style="flex:1" id="visName" placeholder="${esc(T.yourName)}"><button class="btn gold sm" id="visOk">OK</button></div>`;
       $('#visOk').onclick=async()=>{try{const r=await api('/api/p/'+SLUG+'/visitor/',{method:'POST',json:{name:$('#visName').value}});token=r.token;try{localStorage.setItem('miel_g_'+SLUG,token)}catch(e){}who().then(load)}catch(err){toast(err.message)}}}
   }

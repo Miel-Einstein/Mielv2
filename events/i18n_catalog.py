@@ -7,6 +7,8 @@ Pour compléter le lingala : ajouter les paires dans CATALOG["ln"], puis
 """
 
 EN = {
+    "Groupes connectés": "Connected groups", "Envoyé à": "Sent to", "groupe(s) Telegram": "Telegram group(s)",
+
     "✧ AVEC TOUT NOTRE AMOUR ✧": "✧ WITH ALL OUR LOVE ✧", "Avec joie, nous célébrons votre présence à nos côtés ! 🥂": "We are overjoyed to celebrate with you by our side! 🥂",
     "C'est aujourd'hui !": "It's today!", "Le grand jour approche !": "The big day is coming!", "lieux de fête": "party venues", "Lieu unique · Magie garantie ✨": "One venue · Magic guaranteed ✨",
     "CARTE D'INVITATION AU MARIAGE": "WEDDING INVITATION", "CARTE D'INVITATION": "INVITATION", "Un grand merci pour votre réponse positive": "Thank you so much for saying yes",
@@ -56,6 +58,8 @@ EN = {
 }
 
 IT = {
+    "Groupes connectés": "Gruppi collegati", "Envoyé à": "Inviato a", "groupe(s) Telegram": "gruppo/i Telegram",
+
     "✧ AVEC TOUT NOTRE AMOUR ✧": "✧ CON TUTTO IL NOSTRO AMORE ✧", "Avec joie, nous célébrons votre présence à nos côtés ! 🥂": "Con gioia festeggiamo la vostra presenza al nostro fianco! 🥂",
     "C'est aujourd'hui !": "È oggi!", "Le grand jour approche !": "Il grande giorno si avvicina!", "lieux de fête": "luoghi di festa", "Lieu unique · Magie garantie ✨": "Un solo luogo · Magia garantita ✨",
     "CARTE D'INVITATION AU MARIAGE": "PARTECIPAZIONE DI NOZZE", "CARTE D'INVITATION": "INVITO", "Un grand merci pour votre réponse positive": "Grazie di cuore per aver accettato",
@@ -107,6 +111,8 @@ IT = {
 # Lingala : seulement des traductions déjà fournies dans les modèles existants de Miel.
 # À compléter par une personne qui parle lingala.
 LN = {
+    "Groupes connectés": "Masanga ekangami", "Envoyé à": "Etindami na", "groupe(s) Telegram": "lisanga/masanga ya Telegram",
+
     "Mur des vœux": "Lisango ya Mabondeli", "Laissez un vœu": "Tika lobondeli", "Votre prénom et nom": "Nkombo na yo",
     "Votre message…": "Maloba na yo ya bolingo...", "Envoyer mon vœu": "Tinda lobondeli na ngai", "Nom": "Nkombo",
 }

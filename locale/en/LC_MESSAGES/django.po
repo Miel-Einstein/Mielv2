@@ -374,6 +374,9 @@ msgstr "Listen"
 msgid "Moments forts"
 msgstr "Highlights"
 
+msgid "Groupes connectés"
+msgstr "Connected groups"
+
 msgid "Laissez un vœu"
 msgstr "Leave a wish"
 
@@ -401,3 +404,9 @@ msgstr "Photo sent to the couple 📸"
 
 msgid "Légende (facultatif)"
 msgstr "Caption (optional)"
+
+msgid "Envoyé à"
+msgstr "Sent to"
+
+msgid "groupe(s) Telegram"
+msgstr "Telegram group(s)"

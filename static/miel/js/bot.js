@@ -209,6 +209,26 @@
           '<div class="grid" style="margin-top:8px"><b>Nouveau moment</b>' + langInputs('mt', {}, 'Titre, ex. Le premier baiser') + '<div class="row"><select class="inp" style="flex:1 1 180px" id="mo-ty"><option value="reveal">Compte à rebours puis photo révélée</option><option value="message">Message surprise plein écran</option><option value="clock">Compte à rebours vers une heure (ex. minuit)</option></select><select class="inp" style="flex:1 1 120px" id="mo-du"><option>10</option><option>30</option><option>60</option></select><select class="inp" style="flex:1 1 140px" id="mo-ef"><option value="confetti">Confettis</option><option value="hearts">Cœurs</option><option value="fireworks">Feux d\'artifice</option></select></div><input class="inp" type="datetime-local" id="mo-at" title="Heure fixe (facultatif)"><div class="row"><label class="btn sm">📷 Photo (facultatif)<input type="file" accept="image/*" hidden id="mo-ph"></label><button class="btn sm" data-a="add">+ Ajouter</button><button class="btn gold" data-a="ok">Continuer</button></div></div>';
         b.querySelector('[data-a=add]').onclick = async () => { const ti = readLang('mt', b); if (!Object.keys(ti).length) return toast('Donne un titre au moment'); const fd = new FormData(); fd.append('title', JSON.stringify(ti)); fd.append('message', JSON.stringify(ti)); fd.append('kind', $('#mo-ty').value); fd.append('duration', $('#mo-du').value); fd.append('effect', $('#mo-ef').value); if ($('#mo-at').value) fd.append('scheduled_at', $('#mo-at').value); if ($('#mo-ph').files[0]) fd.append('photo', $('#mo-ph').files[0]); try { EV.moments = await api(BASE + 'moments/', { method: 'POST', form: fd }); render(); } catch (e) { toast(e.message); } };
         b.querySelector('[data-a=ok]').onclick = () => answer(EV.moments.length + ' moment(s) fort(s) prêts'); } },
+    { id: 'telegram', label: 'Photos sur Telegram', show: () => has('mur'), ask: () => "Les photos et vidéos que tes invités envoient depuis le mur des vœux peuvent arriver <b>en direct dans ton groupe ou ton canal Telegram</b> ✈️ Relie-le en 3 gestes, c'est gratuit.",
+      ui: b => { let T = null;
+        const load = async () => { try { T = await api(BASE + 'telegram/'); } catch (e) { return toast(e.message); } draw(); };
+        const draw = () => { if (!b.isConnected) return;
+          const list = T.channels.filter(c => c.active);
+          b.innerHTML = '<div class="grid" style="text-align:left;gap:10px">' +
+            (list.length ? '<div class="tg-groups"><b>✈️ Groupes connectés (' + list.length + ')</b><div>' + list.map(c => '<span class="tg-badge" translate="no">' + (c.kind === 'channel' ? '📢 ' : '👥 ') + esc(c.title) + ' <button type="button" class="tg-x" data-del="' + c.id + '" aria-label="Retirer">✕</button></span>').join('') + '</div></div>' : '<div class="hint">Aucun groupe relié pour le moment.</div>') +
+            (T.configured ? '' : '<div class="hint" style="color:#ffd27a">⚠️ Le bot Telegram de Miel n\'est pas encore configuré sur le serveur : la liaison marchera dès qu\'il le sera.</div>') +
+            '<ol class="tg-steps"><li>' + (T.bot ? 'Ajoute <b translate="no">@' + esc(T.bot) + '</b> à ton groupe Telegram, ou comme administrateur de ton canal.' : 'Ajoute le bot Miel à ton groupe Telegram, ou comme administrateur de ton canal.') + '</li><li>Colle ce jeton dans le groupe ou le canal :</li></ol>' +
+            '<div class="tg-token" translate="no">' + esc(T.token) + '</div>' +
+            '<div class="row center"><button type="button" class="btn sm gold" data-a="copy">📋 Copier le jeton</button>' + (T.group_link ? '<a class="btn sm" href="' + esc(T.group_link) + '" target="_blank" rel="noopener">➕ Ajouter Miel à un groupe</a>' : '') + '</div>' +
+            '<ol class="tg-steps" start="3"><li>Miel répond « ✅ Ce groupe est relié » et efface le jeton. Ton groupe apparaît ici tout de suite.</li></ol>' +
+            '<div class="row center"><button type="button" class="btn sm ghost" data-a="new">↻ Nouveau jeton</button><button type="button" class="btn gold" data-a="ok">' + (list.length ? 'Valider' : 'Plus tard') + '</button></div></div>';
+          b.querySelector('[data-a=copy]').onclick = async () => { try { await navigator.clipboard.writeText(T.token); toast('Jeton copié ✦'); } catch (e) { toast('Sélectionne le jeton et copie-le'); } };
+          b.querySelector('[data-a=new]').onclick = async () => { if (!confirmNew) { confirmNew = true; toast('L\'ancien jeton ne marchera plus. Touche encore pour confirmer.'); setTimeout(() => confirmNew = false, 4000); return; } confirmNew = false; T = await api(BASE + 'telegram/', { method: 'POST', json: { regenerate: true } }); draw(); };
+          $$('[data-del]', b).forEach(x => x.onclick = async () => { T = await api(BASE + 'telegram/' + x.dataset.del + '/', { method: 'DELETE' }); draw(); });
+          b.querySelector('[data-a=ok]').onclick = () => { clearInterval(timer); answer(list.length ? list.length + ' groupe(s) Telegram relié(s)' : 'Plus tard'); }; };
+        let confirmNew = false;
+        const timer = setInterval(() => { if (!b.isConnected) return clearInterval(timer); api(BASE + 'telegram/').then(n => { if (JSON.stringify(n.channels) !== JSON.stringify(T && T.channels)) { T = n; draw(); } }).catch(() => {}); }, 4000);
+        load(); } },
     { id: 'partage', label: 'Partage', ask: () => "Dernière étape : partager ton invitation 💌 Par quel moyen veux-tu l'envoyer ?",
       ui: b => { const url = EV.urls.share;
         if (!share.ch) { b.innerHTML = '<div class="tiles-row">' + tile('🟢', 'WhatsApp', 'data-c="wa"') + tile('✈️', 'Telegram', 'data-c="tg"') + tile('🔗', 'Copier le lien', 'data-c="cp"') + '</div>'; $$('.opt', b).forEach(c => c.onclick = () => { share.ch = c.dataset.c; push('me', esc(c.textContent.trim())); push('bot', 'Dans quelle langue veux-tu envoyer le message ?'); save(); render(); }); return; }
@@ -249,7 +269,8 @@
   let view = 'step'; // step | preview | history
   function open(stepId) { if (typeof stepId === 'string') { const i = STEPS.findIndex(x => x.id === stepId); if (i >= 0 && STEPS[i].id !== S.step) { S.step = STEPS[i].id; S.paused = false; push('bot', STEPS[i].ask()); save(); } } pop.hidden = false; requestAnimationFrame(() => pop.classList.add('show')); document.body.classList.add('bot-open'); render(); }
   function close() {
-    pop.classList.remove('show'); document.body.classList.remove('bot-open');
+    pop.classList.remove('show'); document.body.classList.remove('bot-open'); voice.stop();
+    if (view === 'help') view = 'step';
     setTimeout(() => { pop.hidden = true; }, 280);
     if (dirty) { dirty = false; window.dispatchEvent(new CustomEvent('miel:event-changed')); }
   }
@@ -268,12 +289,15 @@
       const body = $('#botBody');
       if (view === 'history') { body.innerHTML = '<div class="bot-hist">' + S.log.map(m => '<div class="msg ' + (m.from === 'me' ? 'me' : 'bot') + '">' + m.html + '</div>').join('') + '</div>'; const h = body.firstChild; h.scrollTop = h.scrollHeight; return; }
       if (view === 'preview') { body.innerHTML = '<div id="pvCol" class="show" translate="no"></div>'; preview(); return; }
+      if (view === 'help') { $('#botLabel').textContent = 'Aide'; drawHelp(body); return; }
       const lastBot = [...S.log].reverse().find(m => m.from !== 'me');
       const lastMe = [...S.log].reverse().find(m => m.from === 'me');
       body.innerHTML = (lastMe && !S.paused ? '<div class="bot-echo">« ' + lastMe.html + ' »</div>' : '') + '<div class="bot-ask">' + (S.paused ? 'Tu as mis cette section en pause. Ne t\'inquiète pas, tu pourras revenir quand tu veux.' : (lastBot ? lastBot.html : st.ask())) + '</div><div class="bot-input" id="composer"></div>';
       const comp = $('#composer');
       if (S.paused) { comp.innerHTML = '<div class="row center"><button class="btn gold" id="bRes">▶ Reprendre</button></div>'; $('#bRes').onclick = togglePause; }
       else st.ui(comp);
+      voice.auto(S.step + '|' + S.log.length, $('.bot-ask', body));
+      if (offerFor === S.step) showOffer(body);
     };
     if (!animate) { draw(); return; }
     card.classList.add('swap');
@@ -291,10 +315,159 @@
     } catch (e) { toast(e.message); }
   }
 
+
+  // ---------- voix du navigateur (synthèse vocale intégrée, gratuite)
+  const voice = (() => {
+    const synth = window.speechSynthesis, lang = (window.MielUI && window.MielUI.lang) || 'fr';
+    const CODES = { fr: 'fr', en: 'en', it: 'it' };
+    let on = false, rate = 1, last = '', lastText = '';
+    try { on = localStorage.getItem('miel_voice') === '1'; rate = +(localStorage.getItem('miel_voice_rate') || 1); } catch (e) {}
+    const supported = !!(synth && window.SpeechSynthesisUtterance);
+    const pickVoice = () => {
+      const code = CODES[lang]; if (!code) return null;
+      const vs = synth.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith(code));
+      const good = /natural|neural|premium|enhanced|google|siri|amélie|amelie|thomas|alice|federica|samantha|daniel/i;
+      return vs.find(v => good.test(v.name) && v.localService === false) || vs.find(v => good.test(v.name)) || vs[0] || null;
+    };
+    const clean = el => (typeof el === 'string' ? (() => { const d = document.createElement('div'); d.innerHTML = el; return d; })() : el).innerText
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}✦❤♥]/gu, '').replace(/\s+/g, ' ').trim();
+    function speak(src) {
+      if (!on || !supported || !src) return;
+      if (!CODES[lang]) return;  // pas de voix en lingala pour l'instant
+      const text = clean(src); if (!text) return;
+      lastText = text; synth.cancel();
+      const u = new SpeechSynthesisUtterance(text); const v = pickVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = ({ fr: 'fr-FR', en: 'en-GB', it: 'it-IT' })[lang];
+      u.rate = rate; synth.speak(u);
+    }
+    function paint() {
+      const b = $('#botVoice'); if (!b) return;
+      b.hidden = !supported; b.textContent = on ? '🔊' : '🔇'; b.setAttribute('aria-pressed', on);
+      b.title = on ? 'Couper la voix' : 'Lire à voix haute';
+      $('#botReplay').hidden = !on; $('#botRate').hidden = !on; $('#botRate').textContent = (rate === 1 ? '1' : String(rate).replace('.', ',')) + '×';
+    }
+    if (supported && synth.onvoiceschanged !== undefined) synth.onvoiceschanged = () => {};
+    return {
+      paint, speak, stop: () => supported && synth.cancel(),
+      auto(key, el) { if (key !== last) { last = key; speak(el); } },
+      toggle() {
+        on = !on; try { localStorage.setItem('miel_voice', on ? '1' : '0'); } catch (e) {}
+        paint();
+        if (on && !CODES[lang]) toast('La voix n\'existe pas encore en lingala : les messages restent écrits.');
+        if (on) speak($('#botBody .bot-ask') || $('#botBody')); else synth.cancel();
+      },
+      replay() { if (lastText) { const t = lastText; lastText = ''; speak(t); } else speak($('#botBody .bot-ask') || $('#botBody')); },
+      cycleRate() { rate = rate === 1 ? 1.25 : rate === 1.25 ? 0.85 : 1; try { localStorage.setItem('miel_voice_rate', rate); } catch (e) {} paint(); this.replay(); },
+    };
+  })();
+
+  // ---------- aide : questions libres, réponses avec actions, proposition après 30 s sans action
+  const HL = [];  // fil de l'aide (session)
+  const helpOff = () => { try { return localStorage.getItem('miel_help_off') === '1'; } catch (e) { return false; } };
+  const offered = new Set();
+  let offerFor = null, lastAct = Date.now(), bubbleShown = false, lastErr = { m: '', t: 0 };
+  const PAGES = { panel: '', tables: 'tables/', gifts: 'cadeaux/' };
+  const context = () => (!pop.hidden && view !== 'help' ? 'bot:' + S.step : (document.body.dataset.page || ''));
+  function pageUrl(p) {
+    if (p in PAGES) return '/app/e/' + EV.slug + '/' + PAGES[p];
+    return (EV.urls || {})[p] || '/app/e/' + EV.slug + '/';
+  }
+  function flash(sel) {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    if (!pop.contains(el)) close();
+    setTimeout(() => { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.remove('flash-hint'); void el.offsetWidth; el.classList.add('flash-hint'); setTimeout(() => el.classList.remove('flash-hint'), 3200); }, pop.contains(el) ? 0 : 320);
+    return true;
+  }
+  function act(a) {
+    if (a.step) { const i = STEPS.findIndex(x => x.id === a.step); if (i >= 0) { view = 'step'; if (!visible(i)) return toast('Cette étape apparaît quand le service correspondant est activé.'); goStep(i, '↩ « ' + esc(STEPS[i].label) + ' ».'); } return; }
+    if (a.open === 'prefs') { close(); setTimeout(() => { const b = $('#themeBtn'); b && b.click(); }, 300); return; }
+    if (a.flash) { if (!flash(a.flash)) { if (a.flash.startsWith('#tb')) location.href = pageUrl('tables') + '?flash=' + encodeURIComponent(a.flash); else toast('Ce bouton se trouve sur une autre page.'); } return; }
+    if (a.go) { const u = pageUrl(a.go); if (['wall', 'screen', 'map', 'site'].includes(a.go)) window.open(u, '_blank', 'noopener'); else location.href = u; return; }
+    if (a.url) location.href = a.url;
+  }
+  function drawHelp(body) {
+    const lastQ = HL.length ? HL[HL.length - 1] : null;
+    body.innerHTML = '<div class="help-thread">' + (HL.length ? '' : '<div class="msg bot">Je t\'écoute ✨ Pose ta question avec tes mots : « comment rouvrir l\'assistant », « photo », « plan de table », « prix »…</div>') +
+      HL.map((h, k) => '<div class="msg me" translate="no">' + esc(h.q) + '</div>' + (h.typing ? '<div class="msg bot typing" aria-label="Miel écrit…"><i></i><i></i><i></i></div>' : h.res ? answerHTML(h, k) : '')).join('') +
+      '</div><div class="row center" style="margin-top:12px"><button type="button" class="btn sm" data-a="back">↩ Revenir à l\'étape</button></div>';
+    const th = $('.help-thread', body); th.scrollTop = th.scrollHeight;
+    body.querySelector('[data-a=back]').onclick = () => { view = 'step'; render(true); };
+    $$('[data-act]', body).forEach(b => b.onclick = () => { const h = HL[+b.dataset.h]; act(h.res.found.actions[+b.dataset.act]); });
+    $$('[data-alt]', body).forEach(b => b.onclick = () => openEntry(+b.dataset.alt, b.textContent));
+    $$('[data-fb]', body).forEach(b => b.onclick = async () => { const h = HL[+b.dataset.h]; if (h.fb) return; h.fb = b.dataset.fb; drawHelp(body);
+      try { await api('/api/help/' + h.res.found.id + '/feedback/', { method: 'POST', json: { useful: h.fb === '1' } }); } catch (e) {} });
+    if (lastQ && lastQ.res && !lastQ.spoken) { lastQ.spoken = true; const m = $$('.msg.bot', body).pop(); voice.speak(m); }
+  }
+  function answerHTML(h, k) {
+    const r = h.res;
+    if (r.found) {
+      const f = r.found;
+      return '<div class="msg bot"><span translate="no">' + esc(f.answer) + '</span>' +
+        (f.actions.length ? '<div class="help-acts">' + f.actions.map((a, i) => '<button type="button" class="btn sm gold" translate="no" data-h="' + k + '" data-act="' + i + '">' + esc(a.label) + '</button>').join('') + '</div>' : '') +
+        '<div class="help-fb">' + (h.fb ? (h.fb === '1' ? 'Merci ! 💛' : 'Merci, on va améliorer cette réponse.') : 'C\'était utile ? <button type="button" data-h="' + k + '" data-fb="1" aria-label="Oui">👍</button><button type="button" data-h="' + k + '" data-fb="0" aria-label="Non">👎</button>') + '</div></div>' +
+        (r.alts.length ? '<div class="help-alts"><small>Tu voulais peut-être dire :</small>' + r.alts.map(a => '<button type="button" class="chip" translate="no" data-alt="' + a.id + '">' + esc(a.question) + '</button>').join('') + '</div>' : '');
+    }
+    return '<div class="msg bot">Je ne sais pas encore répondre à ça. J\'ai noté ta question : l\'équipe Miel va ajouter la réponse. 🐝</div>' +
+      (r.alts.length ? '<div class="help-alts"><small>Ces réponses peuvent peut-être t\'aider :</small>' + r.alts.map(a => '<button type="button" class="chip" translate="no" data-alt="' + a.id + '">' + esc(a.question) + '</button>').join('') + '</div>' : '');
+  }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  async function askHelp(q, ctx) {
+    q = (q || '').trim(); if (!q) return;
+    if (pop.hidden) open();
+    const c = ctx || context();
+    view = 'help'; const h = { q, typing: true }; HL.push(h); render(true);
+    const lang = (window.MielUI && window.MielUI.lang) || 'fr';
+    const [res] = await Promise.all([api('/api/help/ask/', { method: 'POST', json: { q, lang, context: c, event: EV.slug } }).catch(e => ({ error: e.message })), wait(650 + Math.random() * 500)]);
+    h.typing = false; h.res = res.error ? { found: null, alts: [] } : res; render();
+  }
+  async function openEntry(id, label, ctxHelp) {
+    if (pop.hidden) open();
+    view = 'help'; const h = { q: label, typing: true }; HL.push(h); render(true);
+    const lang = (window.MielUI && window.MielUI.lang) || 'fr';
+    const url = ctxHelp ? '/api/help/here/?lang=' + lang + '&context=' + encodeURIComponent(ctxHelp) : '/api/help/' + id + '/?lang=' + lang;
+    const [res] = await Promise.all([api(url).catch(() => null), wait(500)]);
+    h.typing = false; h.res = res ? { found: res, alts: [] } : { found: null, alts: [] }; render();
+  }
+  function showOffer(body) {
+    if ($('.help-offer', body)) return;
+    const d = document.createElement('div'); d.className = 'help-offer';
+    d.innerHTML = '💡 Tu as besoin d\'un coup de main pour cette étape ?<div class="row center"><button type="button" class="btn sm gold" data-o="yes">Oui, explique-moi</button><button type="button" class="btn sm" data-o="no">Non merci</button><button type="button" class="btn sm ghost" data-o="never">Ne plus me le proposer</button></div>';
+    body.prepend(d); voice.speak(d.firstChild.textContent);
+    d.querySelector('[data-o=yes]').onclick = () => { offerFor = null; openEntry(null, 'Aide : ' + STEPS[idx(S.step)].label, 'bot:' + S.step); };
+    d.querySelector('[data-o=no]').onclick = () => { offerFor = null; d.remove(); };
+    d.querySelector('[data-o=never]').onclick = () => { offerFor = null; d.remove(); try { localStorage.setItem('miel_help_off', '1'); } catch (e) {} toast('D\'accord. Tu peux toujours poser une question en bas de l\'assistant.'); };
+  }
+  function offerNow() {
+    if (helpOff() || offered.has(S.step) || S.paused) return;
+    offered.add(S.step); offerFor = S.step; const b = $('#botBody'); if (b && view === 'step') showOffer(b);
+  }
+  function setupHelp() {
+    ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart'].forEach(t => document.addEventListener(t, () => { lastAct = Date.now(); }, { passive: true, capture: true }));
+    setInterval(() => {
+      if (document.visibilityState !== 'visible' || helpOff()) return;
+      const idle = Date.now() - lastAct;
+      const typing = document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.value && document.activeElement.id !== 'botAskQ';
+      if (!pop.hidden && view === 'step' && idle > 30000 && !typing) offerNow();
+      if (pop.hidden && idle > 30000 && !bubbleShown) { bubbleShown = true; $('#fabBubble').hidden = false; }
+    }, 3000);
+    // même message d'erreur deux fois de suite : proposer l'aide tout de suite
+    const orig = Miel.toast;
+    Miel.toast = function (m, u) { const now = Date.now(); if (!pop.hidden && view === 'step' && m === lastErr.m && now - lastErr.t < 60000) offerNow(); lastErr = { m, t: now }; return orig.apply(this, arguments); };
+    $('#fabBubble').onclick = () => { $('#fabBubble').hidden = true; const c = document.body.dataset.page || ''; open(); if (c) openEntry(null, 'Aide sur cette page', c); else { view = 'help'; render(true); } };
+    $('#botAskForm').onsubmit = e => { e.preventDefault(); const i = $('#botAskQ'); const q = i.value; i.value = ''; askHelp(q); };
+    $('#botVoice').onclick = () => voice.toggle();
+    $('#botReplay').onclick = () => voice.replay();
+    $('#botRate').onclick = () => voice.cycleRate();
+    voice.paint();
+    const f = new URLSearchParams(location.search).get('flash'); if (f) setTimeout(() => flash(f), 900);
+  }
+
   async function init() {
     S = await api(BASE + 'bot/');
     if (!S.log.length) { S.step = 'accueil'; push('bot', STEPS[0].ask()); save(); }
-    $('#botFab').onclick = open;
+    $('#botFab').onclick = () => { $('#fabBubble').hidden = true; open(); };
+    setupHelp();
     $('#botClose').onclick = close;
     pop.addEventListener('click', e => { if (e.target === pop) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.hidden) close(); });

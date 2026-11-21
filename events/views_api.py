@@ -13,11 +13,12 @@ from django.db import transaction
 from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from events import serializers as S
 from events.models import (CARD_TEMPLATES, AlerterItem, BotSession, Category, Child, Companion, Contact, DeliveryOption, Event, Gift,
-                           GalleryImage, GiftReservation, Guest, Moment, Reaction, Role, StoryStep, Table, Venue, Visitor, Wish, t)
+                           GalleryImage, GiftReservation, TelegramChannel, Guest, Moment, Reaction, Role, StoryStep, Table, Venue, Visitor, Wish, t)
 from events.services import alerter, notify, seating
 from events.services.defaults import CATEGORY_COLORS, reset_alerter
 from events.services.realtime import broadcast
@@ -117,6 +118,65 @@ def my_ui_lang(request):
     resp = ok({"lang": lang})
     resp.set_cookie(COOKIE, lang, max_age=365 * 24 * 3600, samesite="Lax")
     return resp
+
+
+# ---------------------------------------------------------------- aide de l'assistant
+def _help_lang(request, d):
+    from events.ui_i18n import UI_LANGS, ui_lang_for
+    lang = d.get("lang") or ui_lang_for(request)
+    return lang if lang in UI_LANGS else "fr"
+
+
+@require_http_methods(["POST"])
+@login_required
+def help_ask(request):
+    """Question libre : meilleure réponse (avec actions), autres pistes ; sinon la question est enregistrée pour l'admin."""
+    from events.models import HelpEntry
+    from events.services import help as H
+    d = body(request)
+    q, lang, ctx = (d.get("q") or "").strip()[:500], _help_lang(request, d), (d.get("context") or "")[:40]
+    if not q:
+        return err("Question vide")
+    best, score, alts = H.search(q, lang, ctx)
+    if best:
+        HelpEntry.objects.filter(pk=best.pk).update(hits=best.hits + 1)
+        return ok({"found": H.entry_payload(best, lang), "alts": [{"id": a.id, "question": H.localized(a.question, lang)} for a in alts]})
+    event = Event.objects.filter(slug=d.get("event"), owner=request.user).first() if d.get("event") else None
+    H.log_unanswered(q, lang, ctx, request.user, event)
+    return ok({"found": None, "alts": [{"id": a.id, "question": H.localized(a.question, lang)} for a in alts]})
+
+
+@require_http_methods(["GET"])
+@login_required
+def help_entry(request, pk):
+    from events.models import HelpEntry
+    from events.services import help as H
+    e = get_object_or_404(HelpEntry, pk=pk, active=True)
+    HelpEntry.objects.filter(pk=e.pk).update(hits=e.hits + 1)
+    return ok(H.entry_payload(e, _help_lang(request, request.GET)))
+
+
+@require_http_methods(["GET"])
+@login_required
+def help_here(request):
+    """Aide de l'écran en cours (proposée après 30 s sans action) : réponse liée à l'étape ou à la page."""
+    from events.models import HelpEntry
+    from events.services import help as H
+    ctx = (request.GET.get("context") or "")[:40]
+    e = (HelpEntry.objects.filter(active=True, context=ctx).order_by("id").first() if ctx else None) or HelpEntry.objects.filter(key="bot-section").first()
+    if not e:
+        return err("Aucune aide", 404)
+    return ok(H.entry_payload(e, _help_lang(request, request.GET)))
+
+
+@require_http_methods(["POST"])
+@login_required
+def help_feedback(request, pk):
+    from django.db.models import F
+    from events.models import HelpEntry
+    useful = bool(body(request).get("useful"))
+    HelpEntry.objects.filter(pk=pk).update(**({"helpful": F("helpful") + 1} if useful else {"not_helpful": F("not_helpful") + 1}))
+    return ok({"thanks": True})
 
 
 # ---------------------------------------------------------------- événement
@@ -316,6 +376,50 @@ def tables_theme(request, event):
     except KeyError:
         return err("Thème inconnu")
     return ok(tables_payload(event))
+
+
+def telegram_payload(event):
+    from django.conf import settings
+    from events.services.telegram_link import ensure_token
+    token = ensure_token(event)
+    bot = settings.TELEGRAM_BOT_USERNAME
+    return {"token": token, "bot": bot, "configured": bool(settings.TELEGRAM_BOT_TOKEN),
+            "group_link": f"https://t.me/{bot}?startgroup={token}" if bot else "",
+            "channel_link": f"https://t.me/{bot}?startchannel&admin=post_messages+delete_messages" if bot else "",
+            "channels": [{"id": c.id, "title": c.title, "kind": c.kind, "active": c.active} for c in event.telegram_channels.all()]}
+
+
+@require_http_methods(["GET", "POST"])
+@owner_api
+def telegram(request, event):
+    """GET : jeton et groupes reliés. POST {"regenerate": true} : nouveau jeton (l'ancien ne marche plus)."""
+    if request.method == "POST" and body(request).get("regenerate"):
+        from events.services.telegram_link import regenerate_token
+        regenerate_token(event)
+    return ok(telegram_payload(event))
+
+
+@require_http_methods(["DELETE"])
+@owner_api
+def telegram_channel(request, event, pk):
+    get_object_or_404(TelegramChannel, pk=pk, event=event).delete()
+    return ok(telegram_payload(event))
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def telegram_webhook(request, secret):
+    """Point d'entrée des mises à jour Telegram (setWebhook avec le même secret)."""
+    from django.conf import settings
+    from events.services.telegram_link import handle_update
+    expected = settings.TELEGRAM_WEBHOOK_SECRET
+    if not expected or secret != expected or request.headers.get("X-Telegram-Bot-Api-Secret-Token", expected) != expected:
+        raise Http404
+    try:
+        handle_update(json.loads(request.body or b"{}"))
+    except Exception:  # Telegram renverrait la même mise à jour en boucle : on répond toujours 200
+        pass
+    return JsonResponse({"ok": True})
 
 
 @require_http_methods(["GET", "POST"])
@@ -862,10 +966,14 @@ def media_upload(request, event):
         return err("Fichier trop lourd (15 Mo maximum)")
     is_video = (f.content_type or "").startswith("video/")
     caption = f"📸 {who['name']}" + (f" — {request.POST.get('caption')}" if request.POST.get("caption") else "")
-    sent = notify.send_telegram_media(event.telegram_chat_id, f, caption, is_video)
+    channels = list(event.telegram_channels.filter(active=True))
+    if not channels:
+        return err("Aucun groupe Telegram n'est encore relié à cet événement", 503)
+    content = f.read()
+    sent = sum(1 for ch in channels if notify.send_telegram_media(ch.chat_id, None, caption, is_video, name=f.name, content=content))
     if not sent:
-        return err("L'envoi vers Telegram n'est pas configuré pour cet événement", 503)
-    return ok({"sent": True})
+        return err("L'envoi vers Telegram a échoué, réessayez dans un instant", 503)
+    return ok({"sent": sent, "total": len(channels)})
 
 
 @require_http_methods(["GET"])

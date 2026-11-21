@@ -1,5 +1,6 @@
 """Pages HTML (organisateur et invités)."""
 from django.contrib.auth import login
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -23,6 +24,16 @@ LANG_COOKIE = "miel_lang"
 
 
 # ---------------------------------------------------------------- comptes
+class PasswordReset(auth_views.PasswordResetView):
+    """Mot de passe oublié : l'e-mail part dans la langue d'interface choisie sur la page."""
+    email_template_name = "registration/password_reset_email.txt"
+    subject_template_name = "registration/password_reset_subject.txt"
+
+    def form_valid(self, form):
+        self.extra_email_context = {"ui_lang": ui_lang_for(self.request)}
+        return super().form_valid(form)
+
+
 def signup(request):
     """Inscription : les conditions d'utilisation doivent être acceptées (pop-up)."""
     errors, data = [], {}
@@ -249,7 +260,8 @@ def wall(request, slug):
     if not event.has("mur"):
         raise Http404
     done = [m for m in event.moments.filter(status="launched")]
-    return guest_render(request, "events/wall.html", event, {"emojis": Reaction.EMOJIS, "done_moments": done})
+    channels = list(event.telegram_channels.filter(active=True))
+    return guest_render(request, "events/wall.html", event, {"emojis": Reaction.EMOJIS, "done_moments": done, "tg_channels": channels})
 
 
 def screen(request, slug):

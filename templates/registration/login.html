@@ -9,6 +9,7 @@
     <div class="user-box"><input type="text" name="username" id="id_username" placeholder="nom d'utilisateur" value="{{ form.username.value|default:'' }}" autocomplete="username" required aria-label="Nom d'utilisateur"></div>
     <div class="user-box"><input type="password" name="password" id="id_password" class="passes" placeholder="mot de passe" autocomplete="current-password" required aria-label="Mot de passe"><button type="button" class="eye-icon" aria-label="Afficher le mot de passe">👁️</button></div>
     {% if form.errors %}<div class="error-message">⚠️ Nom d'utilisateur ou mot de passe incorrect.</div>{% endif %}
+    <a class="forgot" href="{% url 'password_reset' %}">Mot de passe oublié ?</a>
     <button type="submit" class="anim-btn"><span></span><span></span><span></span><span></span>Se connecter</button>
   </form>
   <div class="alt">Pas encore de compte ? <a href="{% url 'signup' %}">Créer un compte</a></div>

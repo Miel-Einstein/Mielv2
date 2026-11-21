@@ -11,3 +11,15 @@ def keep_login_language(sender, request, user, **kwargs):
     if lang in UI_LANGS:
         from events.models import UserSettings
         UserSettings.objects.update_or_create(user=user, defaults={"ui_lang": lang})
+
+
+def load_help_if_empty(sender, **kwargs):
+    """Au premier « migrate », charge les réponses de départ de l'aide."""
+    from django.db.utils import OperationalError, ProgrammingError
+    try:
+        from events.models import HelpEntry
+        if not HelpEntry.objects.exists():
+            from events.services.help import load_builtin
+            load_builtin()
+    except (OperationalError, ProgrammingError):
+        pass

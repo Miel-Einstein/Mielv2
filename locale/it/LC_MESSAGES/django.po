@@ -374,6 +374,9 @@ msgstr "Ascolta"
 msgid "Moments forts"
 msgstr "Momenti speciali"
 
+msgid "Groupes connectés"
+msgstr "Gruppi collegati"
+
 msgid "Laissez un vœu"
 msgstr "Lascia un desiderio"
 
@@ -401,3 +404,9 @@ msgstr "Foto inviata agli sposi 📸"
 
 msgid "Légende (facultatif)"
 msgstr "Didascalia (facoltativa)"
+
+msgid "Envoyé à"
+msgstr "Inviato a"
+
+msgid "groupe(s) Telegram"
+msgstr "gruppo/i Telegram"

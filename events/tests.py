@@ -393,3 +393,99 @@ class InterfaceLanguageTests(TestCase):
         subjects = {m.to[0]: m.subject for m in mail.outbox}
         self.assertEqual(subjects["rose@x.co"], "⏰ Promemoria: Fleuriste")
         self.assertEqual(subjects["g@x.co"], "⏰ Reminder: Fleuriste")
+
+
+class TelegramLinkTests(TestCase):
+    def setUp(self):
+        self.u = User.objects.create_user("tg", "tg@x.co", "pw-12345678")
+        self.ev = Event.objects.create(owner=self.u, type="mariage", title={"fr": "Awa & Daniel"}, languages=["fr"], services=["mur"])
+        self.client.force_login(self.u)
+
+    @override_settings(TELEGRAM_BOT_TOKEN="", TELEGRAM_BOT_USERNAME="MielBot", TELEGRAM_WEBHOOK_SECRET="s" * 20)
+    def test_token_links_group_and_channel_then_photos_go_to_all(self):
+        from unittest import mock
+        from events.models import TelegramChannel
+        data = self.client.get(f"/api/e/{self.ev.slug}/telegram/").json()
+        tok = data["token"]
+        self.assertRegex(tok, r"^[a-f0-9]{64}$")
+        self.assertEqual(data["group_link"], f"https://t.me/MielBot?startgroup={tok}")
+        hook = "/telegram/webhook/" + "s" * 20 + "/"
+        self.assertEqual(self.client.post("/telegram/webhook/mauvais-secret/", data="{}", content_type="application/json").status_code, 404)
+        upd = {"update_id": 1, "message": {"message_id": 5, "chat": {"id": -100123, "type": "supergroup", "title": "Famille Mbala"}, "text": "token: " + tok}}
+        self.assertEqual(self.client.post(hook, data=json.dumps(upd), content_type="application/json").status_code, 200)
+        upd2 = {"update_id": 2, "channel_post": {"message_id": 9, "chat": {"id": -100999, "type": "channel", "title": "Photos du mariage"}, "text": f"/start@MielBot {tok}"}}
+        self.client.post(hook, data=json.dumps(upd2), content_type="application/json")
+        self.assertEqual(sorted(self.ev.telegram_channels.values_list("title", flat=True)), ["Famille Mbala", "Photos du mariage"])
+        # un mauvais jeton ou une conversation privée ne relient rien
+        self.client.post(hook, data=json.dumps({"update_id": 3, "message": {"message_id": 1, "chat": {"id": 7, "type": "private"}, "text": tok}}), content_type="application/json")
+        self.assertEqual(self.ev.telegram_channels.count(), 2)
+        # le mur affiche les groupes et la photo part vers les deux
+        self.assertContains(self.client.get(f"/e/{self.ev.slug}/mur/"), "Famille Mbala")
+        g = Guest.objects.create(event=self.ev, first_name="Paul", last_name="M", attending=True)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        with mock.patch("events.services.notify.send_telegram_media", return_value=True) as send:
+            r = self.client.post(f"/api/p/{self.ev.slug}/media/", {"token": g.token, "file": SimpleUploadedFile("a.jpg", b"img", content_type="image/jpeg")})
+        self.assertEqual(r.json()["sent"], 2)
+        self.assertEqual({c.args[0] for c in send.call_args_list}, {"-100123", "-100999"})
+        # le bot retiré du groupe : groupe désactivé ; nouveau jeton : l'ancien ne marche plus
+        self.client.post(hook, data=json.dumps({"update_id": 4, "my_chat_member": {"chat": {"id": -100123}, "new_chat_member": {"status": "kicked"}}}), content_type="application/json")
+        self.assertFalse(TelegramChannel.objects.get(chat_id="-100123").active)
+        new = self.client.post(f"/api/e/{self.ev.slug}/telegram/", data='{"regenerate": true}', content_type="application/json").json()["token"]
+        self.assertNotEqual(new, tok)
+
+
+class HelpAndPasswordTests(TestCase):
+    def setUp(self):
+        from events.services.help import load_builtin
+        load_builtin()
+        self.u = User.objects.create_user("h", "h@x.co", "pw-12345678")
+        self.client.force_login(self.u)
+
+    def ask(self, q, **kw):
+        return self.client.post("/api/help/ask/", data=json.dumps({"q": q, **kw}), content_type="application/json").json()
+
+    def test_answers_context_actions_feedback_and_unknown(self):
+        from events.models import HelpEntry, UnansweredQuestion
+        r = self.ask("le pop-up du bot a disparu", lang="fr")
+        self.assertEqual(r["found"]["question"], "Comment rouvrir l'assistant Miel ?")
+        self.assertEqual(r["found"]["actions"][0]["flash"], "#botFab")
+        r = self.ask("how much does it cost", lang="en")
+        self.assertIn("€25", r["found"]["answer"])
+        r = self.ask("comment remplir cette section ?", lang="fr", context="bot:enfants")
+        self.assertIn("table des enfants", r["found"]["answer"])
+        eid = r["found"]["id"]
+        self.client.post(f"/api/help/{eid}/feedback/", data='{"useful": true}', content_type="application/json")
+        self.assertEqual(HelpEntry.objects.get(pk=eid).helpful, 1)
+        # question hors sujet : enregistrée (et comptée si elle revient)
+        for _ in range(2):
+            r = self.ask("Quelle est la recette du poulet moambe ?", lang="fr", context="panel")
+        self.assertIsNone(r["found"])
+        q = UnansweredQuestion.objects.get()
+        self.assertEqual((q.count, q.context, q.user), (2, "panel", self.u))
+        # l'admin crée la réponse : elle sert tout de suite
+        HelpEntry.objects.create(question={"fr": "Recette du moambe ?"}, answer={"fr": "Miel ne fait pas encore la cuisine 😄"}, keywords="recette poulet moambe cuisine")
+        self.assertIn("cuisine", self.ask("recette du poulet moambe", lang="fr")["found"]["answer"])
+        self.assertIn("Chaque étape", self.client.get("/api/help/here/?context=bot:inconnue&lang=fr").json()["answer"])
+
+    def test_admin_prefills_from_unanswered(self):
+        from events.models import UnansweredQuestion
+        self.u.is_staff = self.u.is_superuser = True
+        self.u.save()
+        q = UnansweredQuestion.objects.create(text="Comment imprimer les badges ?", normalized="comment imprimer les badges", context="panel")
+        self.assertContains(self.client.get("/admin/events/unansweredquestion/"), "Créer la réponse")
+        self.assertContains(self.client.get(f"/admin/events/helpentry/add/?from_question={q.pk}"), "imprimer")
+
+    def test_password_reset_mail_in_interface_language(self):
+        from django.core import mail
+        self.client.logout()
+        self.client.cookies["miel_ui"] = "it"
+        self.assertContains(self.client.get("/connexion/"), "/mot-de-passe-oublie/")
+        r = self.client.post("/mot-de-passe-oublie/", {"email": "h@x.co"})
+        self.assertRedirects(r, "/mot-de-passe-oublie/envoye/")
+        self.assertEqual(mail.outbox[0].subject, "Miel · Reimposta la password")
+        link = [l for l in mail.outbox[0].body.split() if "/mot-de-passe/" in l][0]
+        r = self.client.get(link.replace("http://testserver", ""), follow=True)
+        self.assertContains(r, "new_password1")
+        r = self.client.post(r.redirect_chain[-1][0], {"new_password1": "Nuovo-miele-2027", "new_password2": "Nuovo-miele-2027"})
+        self.assertRedirects(r, "/mot-de-passe/termine/")
+        self.assertTrue(self.client.login(username="h", password="Nuovo-miele-2027"))
