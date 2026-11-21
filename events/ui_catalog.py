@@ -842,7 +842,7 @@ UI = {
     "L'ancien jeton ne marchera plus. Touche encore pour confirmer.": ("The old token will stop working. Tap again to confirm.", "Il vecchio token non funzionerà più. Tocca di nuovo per confermare.", "Jeton ya kala ekosala lisusu te. Finá lisusu mpo na kondima."),
     "groupe(s) Telegram relié(s)": ("Telegram group(s) linked", "gruppo/i Telegram collegato/i", "lisanga/masanga ya Telegram ekangami"),
     "Retirer": ("Remove", "Rimuovi", "Longola"),
-    "Pose ta question…": ("Ask your question…", "Fai la tua domanda…", "Tuna motuna na yo…"),
+    "Bloqué·e ? Pose ta question…": ("Stuck? Ask your question…", "Bloccato/a? Fai la tua domanda…", "Okangami ? Tuna motuna na yo…"),
     "Pose ta question": ("Ask your question", "Fai la tua domanda", "Tuna motuna na yo"),
     "Envoyer la question": ("Send the question", "Invia la domanda", "Tinda motuna"),
     "Aide": ("Help", "Aiuto", "Lisalisi"),
