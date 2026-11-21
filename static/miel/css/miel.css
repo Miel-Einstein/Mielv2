@@ -475,7 +475,7 @@ body.bot-open .bot-fab{opacity:0;pointer-events:none;transform:scale(.9)}
 @keyframes offerIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .fab-bubble{position:fixed;right:18px;bottom:82px;z-index:121;padding:9px 14px;border-radius:16px 16px 4px 16px;border:1px solid rgba(212,167,106,.6);background:linear-gradient(145deg,#3a2a1e,#2b2019);color:#f7eddc;font-weight:700;font-size:13.5px;box-shadow:0 10px 26px rgba(0,0,0,.35);cursor:pointer;animation:offerIn .4s ease}
 body.bot-open .fab-bubble{display:none}
-.flash-hint{animation:flashHint 1s ease 3;position:relative;z-index:5}
+.flash-hint{animation:flashHint 1s ease 3}
 @keyframes flashHint{0%,100%{box-shadow:0 0 0 0 rgba(233,168,59,0)}50%{box-shadow:0 0 0 6px rgba(233,168,59,.75),0 0 24px rgba(233,168,59,.6)}}
 @media (prefers-reduced-motion:reduce){.flash-hint{outline:3px solid #e9a83b;animation:none}}
 @media (max-width:520px){.bot-voice-tools{top:10px;left:10px}.help-thread{max-height:42vh}}
