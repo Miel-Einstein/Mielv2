@@ -356,3 +356,40 @@ class CardTemplatesTests(TestCase):
             im = focus_crop(f, 3 / 4, {"x": 100, "y": 50, "z": 2})
         self.assertAlmostEqual(im.size[0] / im.size[1], 0.75, places=2)
         self.assertEqual(self.client.get(f"/app/e/{self.ev.slug}/carte-apercu/?lang=en").status_code, 200)
+
+
+class InterfaceLanguageTests(TestCase):
+    def test_signup_login_api_and_alert_language(self):
+        from django.core import mail
+        from events.models import UserSettings, Contact, Role, AlerterItem
+        from events.services import alerter
+        self.client.cookies["miel_ui"] = "it"
+        r = self.client.get("/connexion/")
+        self.assertContains(r, "dataset.ui='it'")
+        self.assertContains(r, "ui-it.js")
+        data = {"username": "giulia", "email": "g@x.co", "password": "Miel-secret-2026", "confirmation": "Miel-secret-2026", "terms_accepted": "1"}
+        self.client.post("/inscription/", data)
+        u = User.objects.get(username="giulia")
+        self.assertEqual(u.miel_settings.ui_lang, "it")
+        self.assertEqual(self.client.post("/api/me/ui-lang/", data='{"lang": "xx"}', content_type="application/json").status_code, 400)
+        r = self.client.post("/api/me/ui-lang/", data='{"lang": "en"}', content_type="application/json")
+        self.assertEqual(r.cookies["miel_ui"].value, "en")
+        u.refresh_from_db()
+        self.assertEqual(u.miel_settings.ui_lang, "en")
+        # navigateur en lingala, sans cookie : page de connexion en lingala
+        c2 = self.client_class()
+        self.assertContains(c2.get("/connexion/", HTTP_ACCEPT_LANGUAGE="ln-CG,fr;q=0.8"), "dataset.ui='ln'")
+        # tâches de départ et rappels dans la langue de chacun
+        ev = Event.objects.create(owner=u, type="mariage", title={"fr": "Fête"}, languages=["fr"], services=["alerter"], date=timezone.localdate())
+        from events.services.defaults import seed_event_defaults
+        seed_event_defaults(ev)
+        self.assertTrue(ev.alerter_items.filter(title="Set the budget").exists())
+        role = Role.objects.create(event=ev, name="Fleurs")
+        tante = Contact.objects.create(event=ev, name="Tante Rose", emails=["rose@x.co"], language="it", consent=True)
+        role.contacts.add(tante)
+        AlerterItem.objects.create(event=ev, title="Fleuriste", due_offset_days=0, role=role)
+        mail.outbox.clear()
+        alerter.run_for_event(ev)
+        subjects = {m.to[0]: m.subject for m in mail.outbox}
+        self.assertEqual(subjects["rose@x.co"], "⏰ Promemoria: Fleuriste")
+        self.assertEqual(subjects["g@x.co"], "⏰ Reminder: Fleuriste")

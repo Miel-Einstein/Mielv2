@@ -5,7 +5,7 @@
   const BASE = '/api/e/' + EV.slug + '/';
   const L1 = EV.languages[0];
   let D = null;
-  const money = v => Number(v || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' ' + EV.currency;
+  const money = v => Number(v || 0).toLocaleString(((window.MielUI && window.MielUI.locale) || 'fr-FR'), { maximumFractionDigits: 0 }) + ' ' + EV.currency;
 
   async function load() {
     [D, EV] = await Promise.all([api(BASE + 'dashboard/'), api(BASE)]);
@@ -19,7 +19,7 @@
     const b = D.budget, pct = b.pct, g = D.guests, a = D.arrivals;
     const roleName = id => (EV.roles.find(r => r.id === id) || {}).name || '';
     $('#main').innerHTML = '<div class="wrap">' +
-      '<div class="row" style="justify-content:space-between;margin-bottom:14px"><h1 style="font-size:36px;font-style:italic;color:var(--honey-soft)">' + esc(tr(EV.title, L1)) + '</h1><span class="muted">' + (EV.date ? new Date(EV.date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + EV.time : 'Date à définir') + '</span></div>' +
+      '<div class="row" style="justify-content:space-between;margin-bottom:14px"><h1 style="font-size:36px;font-style:italic;color:var(--honey-soft)">' + esc(tr(EV.title, L1)) + '</h1><span class="muted">' + (EV.date ? new Date(EV.date + 'T12:00').toLocaleDateString(((window.MielUI && window.MielUI.locale) || 'fr-FR'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + EV.time : 'Date à définir') + '</span></div>' +
       '<div class="tiles">' +
       '<div class="tile"><span>Réponses RSVP</span><b>' + D.responses + '</b></div>' +
       '<div class="tile"><span>Personnes confirmées</span><b>' + D.confirmed_people + '</b></div>' +
@@ -47,9 +47,9 @@
       (EV.services.includes('alerter') ? '<div class="card"><div class="row" style="justify-content:space-between"><h2 style="font-size:26px">⏰ Alerter</h2><span class="pill ' + (pct > 100 ? 'bad' : pct >= 80 ? 'warn' : 'ok') + '">' + money(b.used) + ' / ' + money(b.budget) + '</span></div>' +
         '<div class="bar ' + (pct > 100 ? 'bad' : pct >= 80 ? 'warn' : '') + '" style="margin:10px 0"><i style="width:' + Math.min(pct, 100) + '%"></i></div>' +
         (pct > 100 ? '<div class="warn-box" style="border-color:var(--bad)">Budget dépassé de <b>' + money(b.over) + '</b>.</div>' : pct >= 80 ? '<div class="warn-box">Tu as utilisé ' + pct + '% du budget. Une alerte part à 80 % et à 100 %.</div>' : '') +
-        EV.alerter.filter(i => i.active).map(i => '<div class="al-row ' + (i.done ? 'done' : '') + '"><input type="checkbox" data-done="' + i.id + '" ' + (i.done ? 'checked' : '') + ' style="width:20px;height:20px;accent-color:#e9a83b" aria-label="Fait"><span class="t">' + esc(i.title) + '<br><small class="muted">' + (i.due_date ? new Date(i.due_date + 'T12:00').toLocaleDateString('fr-FR') : '') + ' · J' + i.due + (i.role ? ' · ' + esc(roleName(i.role)) : '') + '</small></span><input class="inp" type="number" placeholder="' + esc(EV.currency) + '" data-price="' + i.id + '" value="' + (i.price ?? '') + '" aria-label="Prix"></div>').join('') +
+        EV.alerter.filter(i => i.active).map(i => '<div class="al-row ' + (i.done ? 'done' : '') + '"><input type="checkbox" data-done="' + i.id + '" ' + (i.done ? 'checked' : '') + ' style="width:20px;height:20px;accent-color:#e9a83b" aria-label="Fait"><span class="t">' + esc(i.title) + '<br><small class="muted">' + (i.due_date ? new Date(i.due_date + 'T12:00').toLocaleDateString(((window.MielUI && window.MielUI.locale) || 'fr-FR')) : '') + ' · J' + i.due + (i.role ? ' · ' + esc(roleName(i.role)) : '') + '</small></span><input class="inp" type="number" placeholder="' + esc(EV.currency) + '" data-price="' + i.id + '" value="' + (i.price ?? '') + '" aria-label="Prix"></div>').join('') +
         '<div class="row" style="margin-top:10px"><input class="inp" style="flex:2 1 180px" id="al-new" placeholder="Ajouter un rappel"><input class="inp" style="flex:1 1 80px" type="number" id="al-due" value="-14" title="Jours avant l\'événement"><select class="inp" style="flex:1 1 140px" id="al-role"><option value="">Organisateur</option>' + EV.roles.map(r => '<option value="' + r.id + '">' + esc(r.name) + '</option>').join('') + '</select><button class="btn sm" id="alAdd">+ Ajouter</button></div>' +
-        (D.alerts_sent.length ? '<details style="margin-top:10px"><summary class="muted" style="cursor:pointer">Alertes envoyées</summary>' + D.alerts_sent.map(x => '<div class="muted" style="font-size:12.5px">' + new Date(x.at).toLocaleString('fr-FR') + ' · ' + esc(x.message) + '</div>').join('') + '</details>' : '') + '</div>' : '') +
+        (D.alerts_sent.length ? '<details style="margin-top:10px"><summary class="muted" style="cursor:pointer">Alertes envoyées</summary>' + D.alerts_sent.map(x => '<div class="muted" style="font-size:12.5px">' + new Date(x.at).toLocaleString(((window.MielUI && window.MielUI.locale) || 'fr-FR')) + ' · ' + esc(x.message) + '</div>').join('') + '</details>' : '') + '</div>' : '') +
       // invités
       '<div class="card"><h2 style="font-size:26px">👥 Suivi des invités</h2><p class="muted" style="font-size:13px;margin:6px 0 12px">' + g.confirmed + ' personnes confirmées sur ' + (g.target || '?') + ' attendues.</p>' +
       (g.target ? '<div class="mini-bars">' + g.milestones.map(r => '<div><div class="lb"><span>J' + r.offset + ' : ' + r.pct + '% attendus (' + r.need + ')</span><span class="pill ' + (r.reached ? 'ok' : r.passed ? 'bad' : 'warn') + '">' + (r.reached ? 'atteint' : r.passed ? 'alerte envoyée' : 'à venir') + '</span></div><div class="bar ' + (r.reached ? '' : 'warn') + '"><i style="width:' + Math.min(100, Math.round(g.confirmed / Math.max(1, r.need) * 100)) + '%"></i></div></div>').join('') + '</div>' : '<p class="muted">Indique le nombre d\'invités attendus dans l\'assistant (étape Alerter).</p>') +

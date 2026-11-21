@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Miel{% endblock %}</title>
+{% include "partials/ui_i18n_head.html" %}
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%90%9D%3C/text%3E%3C/svg%3E">
 <style>
 /* Design des pages de connexion et d'inscription de Miel (repris du modèle existant) */
@@ -11,6 +12,7 @@ html{height:100%}
 body{margin:0;padding:0;min-height:100%;font-family:sans-serif;background:linear-gradient(#92187c,pink);display:flex;align-items:center;justify-content:center}
 .login-box{width:min(400px,calc(100% - 32px));margin:24px 0;padding:40px;box-sizing:border-box;background:rgba(0,0,0,.5);box-shadow:0 15px 25px rgba(0,0,0,.6);border-radius:10px}
 @media (max-width:420px){.login-box{padding:28px 22px}}
+.ui-flags{position:fixed;top:12px;right:12px;display:flex;gap:6px;z-index:10}.ui-flags a{color:#fff;text-decoration:none;font-size:13px;padding:6px 9px;border-radius:999px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.25)}.ui-flags a.on{background:#f4c003;color:#2c1028;border-color:#f4c003;font-weight:bold}
 .login-box h2{margin:0 0 30px;padding:0;color:#fff;text-align:center}
 .login-box .user-box{position:relative}
 .login-box .user-box input{width:100%;padding:10px 0;font-size:16px;color:#fff;margin-bottom:30px;border:none;border-bottom:1px solid #fff;outline:none;background:transparent;box-sizing:border-box}
@@ -51,8 +53,10 @@ input:-webkit-autofill,input:-webkit-autofill:focus{transition:background-color 
 </style>
 </head>
 <body>
+<nav class="ui-flags" aria-label="Langue">{% for code, flag, name in ui_flags %}<a href="#" data-ui="{{ code }}" class="{% if code == ui_lang %}on{% endif %}" title="{{ name }}" translate="no">{{ flag }} {{ code|upper }}</a>{% endfor %}</nav>
 {% block body %}{% endblock %}
 <script>
+document.querySelectorAll('.ui-flags a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.cookie='miel_ui='+a.dataset.ui+';path=/;max-age=31536000;SameSite=Lax';location.reload();}));
 document.querySelectorAll('.eye-icon').forEach(eye=>eye.addEventListener('click',()=>{
   const ins=document.querySelectorAll('.passes');const show=ins[0].type==='password';
   ins.forEach(i=>i.type=show?'text':'password');eye.textContent=show?'🔒':'👁️';eye.setAttribute('aria-label',show?'Masquer le mot de passe':'Afficher le mot de passe');

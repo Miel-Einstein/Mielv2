@@ -12,7 +12,8 @@ from django.utils import translation
 from django.views.decorators.http import require_POST
 
 from events import serializers as S
-from events.models import EventType, Event, Reaction, TermsAcceptance
+from events.models import EventType, Event, Reaction, TermsAcceptance, UserSettings
+from events.ui_i18n import COOKIE as UI_COOKIE, UI_LANGS, ui_lang_for
 from events.services import pdf, seating
 from events.services import plan_svg as plan_render
 from events.services.defaults import seed_event_defaults
@@ -50,6 +51,7 @@ def signup(request):
         if not errors:
             user = User.objects.create_user(data["username"], data["email"], password)
             TermsAcceptance.objects.create(user=user)
+            UserSettings.objects.update_or_create(user=user, defaults={"ui_lang": ui_lang_for(request)})
             login(request, user)
             return redirect("home")
     return render(request, "registration/signup.html", {"errors": errors, "data": data})

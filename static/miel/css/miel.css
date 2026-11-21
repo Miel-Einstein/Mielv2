@@ -448,3 +448,5 @@ body.bot-open .bot-fab{opacity:0;pointer-events:none;transform:scale(.9)}
 .ph-thumb{position:relative;width:150px;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.08);border:1px solid rgba(232,201,122,.4)}
 .ph-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .ph-thumb.empty{display:grid;place-items:center;font-size:34px}
+
+.ui-lang-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}

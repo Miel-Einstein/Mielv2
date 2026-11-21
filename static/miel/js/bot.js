@@ -5,6 +5,7 @@
   const { $, $$, esc, api, toast, openSheet, closeSheet, tr } = Miel;
   const EV = window.EVENT;
   const BASE = '/api/e/' + EV.slug + '/';
+  const UI_LOCALE = (window.MielUI && window.MielUI.locale) || 'fr-FR';
   const LANGS = { fr: ['🇫🇷', 'Français'], en: ['🇬🇧', 'English'], it: ['🇮🇹', 'Italiano'], ln: ['🇨🇬', 'Lingala'] };
   const TYPES = [['mariage', '💍', 'Mariage'], ['anniversaire', '🎂', 'Anniversaire'], ['bapteme', '🕊️', 'Baptême'], ['diner', '🍽️', 'Dîner au restaurant'], ['entreprise', '🏢', "Événement d'entreprise"]];
   const SERVICES = [['carte', '💌', "Carte d'invitation & RSVP", 1], ['cadeaux', '🎁', 'Liste de cadeaux'], ['tables', '🪑', 'Plan de table'], ['alerter', '⏰', 'Alerter (rappels & budget)'], ['mur', '💬', 'Mur des vœux & photos'], ['moments', '✨', 'Moments forts'], ['site', '🌐', 'Site du mariage', 0, 1]];
@@ -37,6 +38,14 @@
   const STEPS = [
     { id: 'accueil', label: 'Accueil', ask: () => "Bonjour 👋 Je suis <b>Miel</b>, ton assistant. Je vais t'aider à préparer ton événement, étape par étape.<br><br>Appuie sur <b>Pause</b> quand tu veux : je reprendrai exactement ici. Le bouton <b>Menu</b> te permet de revenir sur n'importe quelle partie.",
       ui: b => { b.innerHTML = '<div class="row center"><button class="btn gold" data-a="go">C\'est parti ✨</button></div>'; b.querySelector('[data-a=go]').onclick = () => answer("C'est parti !"); } },
+    { id: 'langue', label: 'Langue de Miel', ask: () => "Je te parle en quelle langue ? <i>Tu pourras la changer à tout moment dans 🎨 Préférences.</i>",
+      ui: b => { const cur = document.documentElement.dataset.ui || 'fr';
+        b.innerHTML = '<div class="tiles-row" translate="no">' + [['fr', '🇫🇷', 'Français'], ['en', '🇬🇧', 'English'], ['it', '🇮🇹', 'Italiano'], ['ln', '🇨🇬', 'Lingála']].map(([k, f, n]) => tile(f, n, 'data-ul="' + k + '"', cur === k)).join('') + '</div>';
+        $$('[data-ul]', b).forEach(x => x.onclick = async () => { const k = x.dataset.ul;
+          if (k === cur) return answer(x.textContent.trim());
+          try { await api('/api/me/ui-lang/', { method: 'POST', json: { lang: k } }); } catch (e) { return toast(e.message); }
+          await answer(x.textContent.trim()); await save();   // l'étape suivante est enregistrée avant de recharger la page dans la nouvelle langue
+          const u = new URL(location.href); u.searchParams.set('bot', '1'); location.href = u.toString(); }); } },
     { id: 'type', label: "Type d'événement", ask: () => "Quel type d'événement prépares-tu ?",
       ui: b => { b.innerHTML = '<div class="tiles-row">' + TYPES.map(([id, ic, l]) => tile(ic, l, 'data-id="' + id + '"', EV.type === id)).join('') + '</div>';
         $$('.opt', b).forEach(c => c.onclick = () => { const ty = TYPES.find(x => x[0] === c.dataset.id); answer(ty[1] + ' ' + ty[2], () => patch({ type: ty[0] })); }); } },
@@ -63,7 +72,7 @@
           b.querySelector('[data-a=ok]').onclick = async () => {
             sync(); const date = $('#bd-date').value; if (!date) return toast('Indique la date');
             if (vs.some(v => !Object.keys(v.name).length)) return toast('Donne un nom à chaque lieu');
-            answer(new Date(date + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + vs.length + ' lieu(x)', async () => {
+            answer(new Date(date + 'T12:00').toLocaleDateString(UI_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + vs.length + ' lieu(x)', async () => {
               await patch({ date, time: $('#bd-time').value }); EV.venues = await api(BASE + 'venues/', { method: 'PUT', json: vs });
             });
           };
@@ -258,7 +267,7 @@
       $('#botHistBtn').classList.toggle('on', view === 'history');
       const body = $('#botBody');
       if (view === 'history') { body.innerHTML = '<div class="bot-hist">' + S.log.map(m => '<div class="msg ' + (m.from === 'me' ? 'me' : 'bot') + '">' + m.html + '</div>').join('') + '</div>'; const h = body.firstChild; h.scrollTop = h.scrollHeight; return; }
-      if (view === 'preview') { body.innerHTML = '<div id="pvCol" class="show"></div>'; preview(); return; }
+      if (view === 'preview') { body.innerHTML = '<div id="pvCol" class="show" translate="no"></div>'; preview(); return; }
       const lastBot = [...S.log].reverse().find(m => m.from !== 'me');
       const lastMe = [...S.log].reverse().find(m => m.from === 'me');
       body.innerHTML = (lastMe && !S.paused ? '<div class="bot-echo">« ' + lastMe.html + ' »</div>' : '') + '<div class="bot-ask">' + (S.paused ? 'Tu as mis cette section en pause. Ne t\'inquiète pas, tu pourras revenir quand tu veux.' : (lastBot ? lastBot.html : st.ask())) + '</div><div class="bot-input" id="composer"></div>';

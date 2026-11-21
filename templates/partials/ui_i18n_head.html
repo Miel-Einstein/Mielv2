@@ -1,0 +1,4 @@
+{% load static %}<script>document.documentElement.dataset.ui='{{ ui_lang|default:"fr" }}';document.documentElement.lang='{{ ui_lang|default:"fr" }}';</script>
+{% if ui_lang and ui_lang != "fr" %}<style>.ui-pending body{opacity:0}</style><script>document.documentElement.classList.add('ui-pending');</script>
+<script src="{% static 'miel/i18n/ui-'|add:ui_lang|add:'.js' %}"></script>{% endif %}
+<script src="{% static 'miel/js/ui-i18n.js' %}"></script>

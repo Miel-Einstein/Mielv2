@@ -69,6 +69,9 @@ def reset_alerter(event):
 
     event.alerter_items.filter(kind="task", done=False).delete()
     existing = set(event.alerter_items.values_list("title", flat=True))
+    from events.ui_i18n import ui, user_ui_lang
+    lang = user_ui_lang(event.owner)
     for title, offset, price in ALERTER_BASE.get(event.type, []):
+        title = ui(title, lang)  # tâches de départ dans la langue de l'organisateur
         if title not in existing:
             AlerterItem.objects.create(event=event, title=title, due_offset_days=offset, price=price)

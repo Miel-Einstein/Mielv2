@@ -459,10 +459,11 @@ class GiftReservation(models.Model):
 
 
 class UserSettings(models.Model):
-    """Préférences de l'organisateur (palette de fond de Miel)."""
+    """Préférences de l'organisateur : palette de fond et langue de l'interface Miel."""
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="miel_settings")
     theme = models.CharField(max_length=20, default="cacao")
+    ui_lang = models.CharField(max_length=5, blank=True, default="")
 
 
 class TermsAcceptance(models.Model):
