@@ -13,3 +13,4 @@ psycopg[binary]==3.2.3
 requests==2.32.3
 polib==1.2.0
 svglib==2.4.0
+python-dotenv==1.0.1
