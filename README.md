@@ -35,7 +35,8 @@ Le paiement et les abonnements ne sont pas encore intégrés.
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py build_translations` puis `python manage.py build_ui_i18n
+python manage.py build_translations
+python manage.py build_ui_i18n
 python manage.py seed_demo          # compte « demo » / « demo-miel-2026 »
 python manage.py createsuperuser    # pour l'admin (catalogue musical)
 uvicorn config.asgi:application --reload
