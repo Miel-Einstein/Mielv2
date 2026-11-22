@@ -486,6 +486,7 @@ body.bot-open .fab-bubble{display:none}
 
 /* Écran géant : vœux flottants (bouton 💫) */
 .fw-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:40}
+.tv .qrbox{position:relative;z-index:41;background:#1d1714}  /* le QR reste toujours lisible */
 .fw-card{position:absolute;left:-320px;max-width:280px;padding:12px 18px;border-radius:20px;background:rgba(255,255,255,.95);border-left:4px solid #ff6b9d;box-shadow:0 10px 30px -10px rgba(0,0,0,.45);animation:fwFloat 12s ease-in-out forwards}
 .fw-card .fw-text{font-size:15px;line-height:1.4;color:#5c3a1e;font-style:italic;margin:0 0 6px}
 .fw-card .fw-author{font-size:12px;color:#d6457a;font-weight:700;text-align:right}
