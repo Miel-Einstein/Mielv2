@@ -489,3 +489,23 @@ class HelpAndPasswordTests(TestCase):
         r = self.client.post(r.redirect_chain[-1][0], {"new_password1": "Nuovo-miele-2027", "new_password2": "Nuovo-miele-2027"})
         self.assertRedirects(r, "/mot-de-passe/termine/")
         self.assertTrue(self.client.login(username="h", password="Nuovo-miele-2027"))
+
+
+class CreateAndHelpVoiceTests(TestCase):
+    def test_double_submit_creates_one_event(self):
+        u = User.objects.create_user("dbl", "d@x.co", "pw-12345678")
+        self.client.force_login(u)
+        r1 = self.client.post("/app/nouveau/")
+        r2 = self.client.post("/app/nouveau/")
+        self.assertEqual(u.events.count(), 1)
+        self.assertEqual(r1["Location"], r2["Location"])
+
+    def test_identity_and_terms_questions(self):
+        from events.services.help import load_builtin, search
+        load_builtin(update=True)
+        for q, key in [("qu'est-ce que Miel ?", "about"), ("qui es-tu", "about"), ("Who are you?", "about"),
+                       ("comment ça marche", "about-how"), ("que disent les conditions d'utilisation", "terms"),
+                       ("qui est responsable si bug", "terms-bugs")]:
+            best, _, _ = search(q, "fr", "")
+            self.assertEqual(best and best.key, key, q)
+        self.assertIsNone(search("quelle est la capitale du Japon", "fr", "")[0])

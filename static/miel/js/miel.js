@@ -110,6 +110,47 @@
     d.className = 'float-emo'; d.textContent = e; d.style.left = 10 + Math.random() * 80 + 'vw';
     document.body.appendChild(d); setTimeout(() => d.remove(), 3300);
   };
+  // ---- Carte téléchargée = exactement la carte affichée à l'écran (capture du même HTML) ----
+  M.captureCard = async function (el, type) {
+    if (typeof htmlToImage === 'undefined') throw new Error('capture indisponible');
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+    const ratio = Math.min(4, Math.max(3, 1200 / el.offsetWidth));
+    const opts = { pixelRatio: ratio, cacheBust: false, skipAutoScale: true, filter: n => !(n.classList && n.classList.contains('no-capture')) };
+    return type === 'jpeg' ? htmlToImage.toJpeg(el, { ...opts, quality: 0.93, backgroundColor: '#ffffff' }) : htmlToImage.toPng(el, opts);
+  };
+  // PDF minimal d'une seule page contenant l'image JPEG, à la taille de la carte (largeur A6 : 105 mm)
+  M.jpegToPdf = function (dataUrl, wPx, hPx) {
+    const bin = atob(dataUrl.split(',')[1]), img = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) img[i] = bin.charCodeAt(i);
+    const W = 297.64, H = +(W * hPx / wPx).toFixed(2), enc = new TextEncoder(), parts = [], offs = [];
+    let len = 0; const add = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); len += b.length; };
+    const obj = (n, body) => { offs[n] = len; add(n + ' 0 obj\n'); body(); add('\nendobj\n'); };
+    const content = 'q ' + W + ' 0 0 ' + H + ' 0 0 cm /Im0 Do Q';
+    add('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n');
+    obj(1, () => add('<< /Type /Catalog /Pages 2 0 R >>'));
+    obj(2, () => add('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'));
+    obj(3, () => add('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>'));
+    obj(4, () => add('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
+    obj(5, () => { add('<< /Type /XObject /Subtype /Image /Width ' + wPx + ' /Height ' + hPx + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + img.length + ' >>\nstream\n'); add(img); add('\nendstream'); });
+    const x = len; add('xref\n0 6\n0000000000 65535 f \n' + [1, 2, 3, 4, 5].map(n => String(offs[n]).padStart(10, '0') + ' 00000 n \n').join('') + 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + x + '\n%%EOF');
+    return new Blob(parts, { type: 'application/pdf' });
+  };
+  M.saveBlob = function (blob, name) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+  M.downloadCard = async function (el, kind, name) {
+    if (kind === 'pdf') {
+      const url = await M.captureCard(el, 'jpeg');
+      const im = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
+      M.saveBlob(M.jpegToPdf(url, im.naturalWidth, im.naturalHeight), name + '.pdf');
+    } else {
+      const url = await M.captureCard(el, 'png');
+      M.saveBlob(await (await fetch(url)).blob(), name + '.png');
+    }
+  };
+
   M.renderQRs = function (root = document) {
     $$('[data-qr]', root).forEach(el => {
       if (el.dataset.done) return; el.dataset.done = 1; el.innerHTML = '';

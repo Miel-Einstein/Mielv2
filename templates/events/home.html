@@ -5,11 +5,10 @@
   <div class="row" style="justify-content:space-between;margin-bottom:16px">
     <h1 style="font-size:40px;font-style:italic;color:var(--honey-soft)">Mes événements</h1>
   </div>
-  <form class="card row" method="post" action="{% url 'event_create' %}" style="margin-bottom:18px">
+  <form class="card row" method="post" action="{% url 'event_create' %}" style="margin-bottom:18px;justify-content:space-between" onsubmit="const b=this.querySelector('button');if(b.disabled)return false;b.disabled=true;b.textContent='…';">
     {% csrf_token %}
-    <label class="f" style="flex:2 1 220px">Nom de l'événement<input class="inp" name="title" placeholder="ex. Awa & Daniel" required></label>
-    <label class="f" style="flex:1 1 180px">Type<select class="inp" name="type">{% for v, l in types %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></label>
-    <button class="btn gold" type="submit" style="align-self:flex-end">✨ Créer avec l'assistant</button>
+    <p class="muted" style="margin:0;flex:1 1 220px">Je te pose les questions une par une : type d'événement, nom, date…</p>
+    <button class="btn gold" type="submit">✨ Nouvel événement</button>
   </form>
   <div class="home-list">
     {% for e in events %}

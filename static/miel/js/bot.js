@@ -36,7 +36,7 @@
 
   // ---------- étapes
   const STEPS = [
-    { id: 'accueil', label: 'Accueil', ask: () => "Bonjour 👋 Je suis <b>Miel</b>, ton assistant. Je vais t'aider à préparer ton événement, étape par étape.<br><br>Appuie sur <b>Pause</b> quand tu veux : je reprendrai exactement ici. Le bouton <b>Menu</b> te permet de revenir sur n'importe quelle partie.",
+    { id: 'accueil', label: 'Accueil', ask: () => "Bonjour 👋 Je suis <b>Miel</b>. Je vais te montrer comment remplir chaque étape de ton événement, une par une, pour chaque service.<br><br>Appuie sur <b>Pause</b> quand tu veux : je reprendrai exactement ici. Le bouton <b>Menu</b> te permet de revenir sur n'importe quelle partie.",
       ui: b => { b.innerHTML = '<div class="row center"><button class="btn gold" data-a="go">C\'est parti ✨</button></div>'; b.querySelector('[data-a=go]').onclick = () => answer("C'est parti !"); } },
     { id: 'langue', label: 'Langue de Miel', ask: () => "Je te parle en quelle langue ? <i>Tu pourras la changer à tout moment dans 🎨 Préférences.</i>",
       ui: b => { const cur = document.documentElement.dataset.ui || 'fr';
@@ -48,14 +48,14 @@
           const u = new URL(location.href); u.searchParams.set('bot', '1'); location.href = u.toString(); }); } },
     { id: 'type', label: "Type d'événement", ask: () => "Quel type d'événement prépares-tu ?",
       ui: b => { b.innerHTML = '<div class="tiles-row">' + TYPES.map(([id, ic, l]) => tile(ic, l, 'data-id="' + id + '"', EV.type === id)).join('') + '</div>';
-        $$('.opt', b).forEach(c => c.onclick = () => { const ty = TYPES.find(x => x[0] === c.dataset.id); answer(ty[1] + ' ' + ty[2], () => patch({ type: ty[0] })); }); } },
+        $$('.opt', b).forEach(c => c.onclick = () => { const ty = TYPES.find(x => x[0] === c.dataset.id); answer(ty[1] + ' ' + ty[2], () => { const sv = new Set(EV.services || []); ty[0] === 'mariage' ? sv.add('site') : sv.delete('site'); return patch({ type: ty[0], services: [...sv], kids_table: ty[0] === 'mariage' || ty[0] === 'bapteme' }); }); }); } },
     { id: 'langues', label: 'Langues', ask: () => "Dans quelles langues tes invités vont-ils lire l'invitation ? Tu peux en choisir plusieurs. Pour chaque texte personnalisé, je te demanderai la traduction.",
       ui: b => { const sel = new Set(EV.languages);
         b.innerHTML = '<div class="tiles-row">' + Object.entries(LANGS).map(([k, l]) => tile(l[0], l[1], 'data-k="' + k + '"', sel.has(k))).join('') + '</div><div class="row center" style="margin-top:14px"><button class="btn gold" data-a="ok">Valider</button></div>';
         $$('.opt', b).forEach(c => c.onclick = () => { sel.has(c.dataset.k) ? sel.delete(c.dataset.k) : sel.add(c.dataset.k); c.classList.toggle('on'); });
         b.querySelector('[data-a=ok]').onclick = () => { if (!sel.size) return toast('Choisis au moins une langue'); const ls = Object.keys(LANGS).filter(k => sel.has(k)); answer(ls.map(k => LANGS[k][0] + ' ' + LANGS[k][1]).join(', '), () => patch({ languages: ls })); }; } },
     { id: 'titre', label: 'Titre (traduit)', ask: () => "Comment s'appelle ton événement ? Écris le <b>titre</b> puis la petite <b>phrase d'accroche</b> dans chaque langue.",
-      ui: b => { b.innerHTML = '<div class="grid"><b>Titre</b>' + langInputs('title', EV.title, 'Titre') + '<b>Accroche</b>' + langInputs('subtitle', EV.subtitle, 'ex. Nous nous marions') + '<div><button class="btn gold" data-a="ok">Valider</button></div></div>';
+      ui: b => { b.innerHTML = '<div class="grid"><b>Titre</b>' + langInputs('title', Object.fromEntries(Object.entries(EV.title || {}).filter(([, v]) => v !== 'Mon événement')), 'ex. Awa & Daniel') + '<b>Accroche</b>' + langInputs('subtitle', EV.subtitle, 'ex. Nous nous marions') + '<div><button class="btn gold" data-a="ok">Valider</button></div></div>';
         b.querySelector('[data-a=ok]').onclick = () => { const ti = readLang('title', b), su = readLang('subtitle', b); const miss = missingLangs(ti); if (miss.length) return toast('Il manque le titre en ' + miss.map(l => LANGS[l][1]).join(', ')); answer(EV.languages.map(l => LANGS[l][0] + ' ' + ti[l]).join(' · '), () => patch({ title: ti, subtitle: su })); }; } },
     { id: 'date', label: 'Date & lieux', ask: () => "Quand a lieu ton événement ? Ajoute ensuite les <b>lieux de la journée</b>, dans l'ordre : nom, heures, adresse et infos pratiques. Les coordonnées GPS servent à la carte « Y aller » (clic droit sur Google Maps → copier les coordonnées).",
       ui: b => {
@@ -279,6 +279,7 @@
 
   function render(animate) {
     if (pop.hidden) return;
+    syncAsk();
     const draw = () => {
       const i = idx(S.step), st = STEPS[i];
       const visibleSteps = STEPS.filter((_, k) => visible(k));
@@ -286,6 +287,7 @@
       $('#botPause').textContent = S.paused ? '▶ Reprendre' : '⏸ Pause';
       $('#botPrev').classList.toggle('on', view === 'preview');
       $('#botHistBtn').classList.toggle('on', view === 'history');
+      $('#botHelpBtn').classList.toggle('on', view === 'help');
       const body = $('#botBody');
       if (view === 'history') { body.innerHTML = '<div class="bot-hist">' + S.log.map(m => '<div class="msg ' + (m.from === 'me' ? 'me' : 'bot') + '">' + m.html + '</div>').join('') + '</div>'; const h = body.firstChild; h.scrollTop = h.scrollHeight; return; }
       if (view === 'preview') { body.innerHTML = '<div id="pvCol" class="show" translate="no"></div>'; preview(); return; }
@@ -408,7 +410,7 @@
         '<div class="help-fb">' + (h.fb ? (h.fb === '1' ? 'Merci ! 💛' : 'Merci, on va améliorer cette réponse.') : 'C\'était utile ? <button type="button" data-h="' + k + '" data-fb="1" aria-label="Oui">👍</button><button type="button" data-h="' + k + '" data-fb="0" aria-label="Non">👎</button>') + '</div></div>' +
         (r.alts.length ? '<div class="help-alts"><small>Tu voulais peut-être dire :</small>' + r.alts.map(a => '<button type="button" class="chip" translate="no" data-alt="' + a.id + '">' + esc(a.question) + '</button>').join('') + '</div>' : '');
     }
-    return '<div class="msg bot">Je ne sais pas encore répondre à ça. J\'ai noté ta question : l\'équipe Miel va ajouter la réponse. 🐝</div>' +
+    return '<div class="msg bot">J\'ai fait le tour de tout ce que je sais, et je ne trouve pas de réponse à te donner pour cette question. Je suis navré. 🐝<br><small class="muted">Je garde ta question de côté pour pouvoir y répondre bientôt.</small></div>' +
       (r.alts.length ? '<div class="help-alts"><small>Ces réponses peuvent peut-être t\'aider :</small>' + r.alts.map(a => '<button type="button" class="chip" translate="no" data-alt="' + a.id + '">' + esc(a.question) + '</button>').join('') + '</div>' : '');
   }
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -416,29 +418,29 @@
     q = (q || '').trim(); if (!q) return;
     if (pop.hidden) open();
     const c = ctx || context();
-    view = 'help'; showAsk(); const h = { q, typing: true }; HL.push(h); render(true);
+    view = 'help'; const h = { q, typing: true }; HL.push(h); render(true);
     const lang = (window.MielUI && window.MielUI.lang) || 'fr';
     const [res] = await Promise.all([api('/api/help/ask/', { method: 'POST', json: { q, lang, context: c, event: EV.slug } }).catch(e => ({ error: e.message })), wait(650 + Math.random() * 500)]);
     h.typing = false; h.res = res.error ? { found: null, alts: [] } : res; render();
   }
   async function openEntry(id, label, ctxHelp) {
     if (pop.hidden) open();
-    view = 'help'; showAsk(); const h = { q: label, typing: true }; HL.push(h); render(true);
+    view = 'help'; const h = { q: label, typing: true }; HL.push(h); render(true);
     const lang = (window.MielUI && window.MielUI.lang) || 'fr';
     const url = ctxHelp ? '/api/help/here/?lang=' + lang + '&context=' + encodeURIComponent(ctxHelp) : '/api/help/' + id + '/?lang=' + lang;
     const [res] = await Promise.all([api(url).catch(() => null), wait(500)]);
     h.typing = false; h.res = res ? { found: res, alts: [] } : { found: null, alts: [] }; render();
   }
-  // Le champ « Bloqué·e ? » n'apparaît qu'en cas de besoin (30 s d'inaction, aide demandée, erreur répétée)
-  function showAsk() { const f = $('#botAskForm'); if (f && f.hidden) { f.hidden = false; f.classList.add('appear'); } }
+  // Le champ « Bloqué·e ? » n'existe que dans la vue d'aide : après « Oui, explique-moi », la bulle 💡 ou le bouton 💡 Aide
+  function syncAsk() { const f = $('#botAskForm'); if (!f) return; const on = view === 'help'; if (on && f.hidden) { f.classList.remove('appear'); void f.offsetWidth; f.classList.add('appear'); } f.hidden = !on; }
   function showOffer(body) {
     if ($('.help-offer', body)) return;
     const d = document.createElement('div'); d.className = 'help-offer';
     d.innerHTML = '💡 Tu as besoin d\'un coup de main pour cette étape ?<div class="row center"><button type="button" class="btn sm gold" data-o="yes">Oui, explique-moi</button><button type="button" class="btn sm" data-o="no">Non merci</button><button type="button" class="btn sm ghost" data-o="never">Ne plus me le proposer</button></div>';
-    body.prepend(d); showAsk(); voice.speak(d.firstChild.textContent);
+    body.prepend(d); voice.speak(d.firstChild.textContent);
     d.querySelector('[data-o=yes]').onclick = () => { offerFor = null; openEntry(null, 'Aide : ' + STEPS[idx(S.step)].label, 'bot:' + S.step); };
     d.querySelector('[data-o=no]').onclick = () => { offerFor = null; d.remove(); };
-    d.querySelector('[data-o=never]').onclick = () => { offerFor = null; d.remove(); try { localStorage.setItem('miel_help_off', '1'); } catch (e) {} toast('D\'accord. Si tu restes bloqué·e, une zone pour poser ta question apparaîtra en bas de l\'assistant.'); };
+    d.querySelector('[data-o=never]').onclick = () => { offerFor = null; d.remove(); try { localStorage.setItem('miel_help_off', '1'); } catch (e) {} toast('D\'accord. Si tu as besoin de moi, touche 💡 Aide en haut de l\'assistant.'); };
   }
   function offerNow() {
     if (helpOff() || offered.has(S.step) || S.paused) return;
@@ -449,7 +451,6 @@
     setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       const idle = Date.now() - lastAct;
-      if (!pop.hidden && idle > 30000) showAsk();
       if (helpOff()) return;
       const typing = document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.value && document.activeElement.id !== 'botAskQ';
       if (!pop.hidden && view === 'step' && idle > 30000 && !typing) offerNow();
@@ -458,7 +459,7 @@
     // même message d'erreur deux fois de suite : proposer l'aide tout de suite
     const orig = Miel.toast;
     Miel.toast = function (m, u) { const now = Date.now(); if (!pop.hidden && view === 'step' && m === lastErr.m && now - lastErr.t < 60000) offerNow(); lastErr = { m, t: now }; return orig.apply(this, arguments); };
-    $('#fabBubble').onclick = () => { $('#fabBubble').hidden = true; const c = document.body.dataset.page || ''; open(); showAsk(); if (c) openEntry(null, 'Aide sur cette page', c); else { view = 'help'; render(true); } };
+    $('#fabBubble').onclick = () => { $('#fabBubble').hidden = true; const c = document.body.dataset.page || ''; open(); if (c) openEntry(null, 'Aide sur cette page', c); else { view = 'help'; render(true); } };
     $('#botAskForm').onsubmit = e => { e.preventDefault(); const i = $('#botAskQ'); const q = i.value; i.value = ''; askHelp(q); };
     $('#botVoice').onclick = () => voice.toggle();
     $('#botReplay').onclick = () => voice.replay();
@@ -478,6 +479,7 @@
     $('#botPause').onclick = togglePause;
     $('#botPrev').onclick = () => togglePreview();
     $('#botHistBtn').onclick = () => { view = view === 'history' ? 'step' : 'history'; render(true); };
+    $('#botHelpBtn').onclick = () => { if (view === 'help') { view = 'step'; render(true); } else openEntry(null, 'Aide : ' + STEPS[idx(S.step)].label, 'bot:' + S.step); };
     $('#botMenu').onclick = () => {
       const cur = idx(S.step);
       const sh = openSheet('<h3>Étapes</h3><p class="muted" style="margin-top:0">Reviens sur n\'importe quelle partie.</p><div class="menu-list">' + STEPS.map((x, i) => visible(i) ? '<button data-i="' + i + '" class="' + (i === cur ? 'cur' : '') + '"><span>' + esc(x.label) + '</span><span class="pill">' + (i < cur ? 'fait' : i === cur ? 'en cours' : 'à venir') + '</span></button>' : '').join('') + '</div>');

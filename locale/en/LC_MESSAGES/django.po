@@ -40,6 +40,9 @@ msgstr "Your reply has been saved. We will miss you!"
 msgid "Télécharger ma carte"
 msgstr "Download my card"
 
+msgid "En image"
+msgstr "As an image"
+
 msgid "Mur des vœux"
 msgstr "Wish wall"
 
@@ -48,6 +51,9 @@ msgstr "Get there"
 
 msgid "Liste de cadeaux"
 msgstr "Gift list"
+
+msgid "Préparation…"
+msgstr "Preparing…"
 
 msgid "Je l’offre"
 msgstr "I'll give it"

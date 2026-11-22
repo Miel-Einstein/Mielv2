@@ -21,6 +21,7 @@ EN = {
     "Dites-nous d’abord qui vous êtes 😊": "Tell us who you are first 😊", "Vœu supprimé": "Wish deleted", "Envoyé ✦": "Sent ✦",
     "Merci": "Thank you", "Votre carte personnalisée est prête 🎉": "Your personal card is ready 🎉",
     "Votre réponse a bien été enregistrée. Vous nous manquerez !": "Your reply has been saved. We will miss you!",
+    "En image": "As an image", "Préparation…": "Preparing…",
     "Télécharger ma carte": "Download my card", "Mur des vœux": "Wish wall", "Y aller": "Get there", "Liste de cadeaux": "Gift list",
     "Je l’offre": "I'll give it", "Déjà offert": "Already given", "Votre prénom et nom": "Your first and last name", "Quantité": "Quantity",
     "Livraison": "Delivery", "Merci ! Le cadeau est réservé 💛": "Thank you! The gift is reserved 💛", "Confirmer": "Confirm", "restant(s)": "left",
@@ -72,6 +73,7 @@ IT = {
     "Dites-nous d’abord qui vous êtes 😊": "Dicci prima chi sei 😊", "Vœu supprimé": "Desiderio eliminato", "Envoyé ✦": "Inviato ✦",
     "Merci": "Grazie", "Votre carte personnalisée est prête 🎉": "Il tuo invito personalizzato è pronto 🎉",
     "Votre réponse a bien été enregistrée. Vous nous manquerez !": "La tua risposta è stata registrata. Ci mancherai!",
+    "En image": "Come immagine", "Préparation…": "Preparazione…",
     "Télécharger ma carte": "Scarica il mio invito", "Mur des vœux": "Muro dei desideri", "Y aller": "Come arrivare", "Liste de cadeaux": "Lista regali",
     "Je l’offre": "Lo regalo io", "Déjà offert": "Già regalato", "Votre prénom et nom": "Nome e cognome", "Quantité": "Quantità",
     "Livraison": "Consegna", "Merci ! Le cadeau est réservé 💛": "Grazie! Il regalo è prenotato 💛", "Confirmer": "Conferma", "restant(s)": "rimasti",
@@ -113,6 +115,7 @@ IT = {
 LN = {
     "Groupes connectés": "Masanga ekangami", "Envoyé à": "Etindami na", "groupe(s) Telegram": "lisanga/masanga ya Telegram",
 
+    "Télécharger ma carte": "Kitisa karte na ngai", "En image": "Lokola elili", "Préparation…": "Ezali kobongisama…",
     "Mur des vœux": "Lisango ya Mabondeli", "Laissez un vœu": "Tika lobondeli", "Votre prénom et nom": "Nkombo na yo",
     "Votre message…": "Maloba na yo ya bolingo...", "Envoyer mon vœu": "Tinda lobondeli na ngai", "Nom": "Nkombo",
 }

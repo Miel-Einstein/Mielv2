@@ -9,7 +9,9 @@ from django.core.validators import validate_email
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils import translation
+from datetime import timedelta
+
+from django.utils import timezone, translation
 from django.views.decorators.http import require_POST
 
 from events import serializers as S
@@ -84,6 +86,10 @@ def home(request):
 @login_required
 @require_POST
 def event_create(request):
+    # Double clic ou page renvoyée : on reprend l'événement vide créé il y a moins d'une minute
+    recent = request.user.events.filter(created_at__gte=timezone.now() - timedelta(minutes=1), title__fr="Mon événement").first()
+    if recent:
+        return redirect("bot", slug=recent.slug)
     etype = request.POST.get("type") if request.POST.get("type") in EventType.values else EventType.MARIAGE
     title = (request.POST.get("title") or "").strip() or "Mon événement"
     services = ["carte", "cadeaux", "tables", "alerter", "mur", "moments"] + (["site"] if etype == "mariage" else [])

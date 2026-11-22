@@ -40,6 +40,9 @@ msgstr "La tua risposta è stata registrata. Ci mancherai!"
 msgid "Télécharger ma carte"
 msgstr "Scarica il mio invito"
 
+msgid "En image"
+msgstr "Come immagine"
+
 msgid "Mur des vœux"
 msgstr "Muro dei desideri"
 
@@ -48,6 +51,9 @@ msgstr "Come arrivare"
 
 msgid "Liste de cadeaux"
 msgstr "Lista regali"
+
+msgid "Préparation…"
+msgstr "Preparazione…"
 
 msgid "Je l’offre"
 msgstr "Lo regalo io"

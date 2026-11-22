@@ -10,7 +10,7 @@
 {% include "partials/ui_i18n_head.html" %}
 <link rel="stylesheet" href="{% static 'miel/css/miel.css' %}">
 <link rel="stylesheet" href="{% static 'miel/css/cards.css' %}">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="{% static 'miel/vendor/qrcode.min.js' %}"></script>
 {% block head %}{% endblock %}
 </head>
 <body data-page="{{ page|default:'' }}">
@@ -81,7 +81,7 @@
     <div class="bot-label" id="botLabel"></div>
     <div id="botBody" aria-live="polite"></div>
     <form class="bot-askbar" id="botAskForm" autocomplete="off" hidden><input id="botAskQ" maxlength="300" placeholder="Bloqué·e ? Pose ta question…" aria-label="Pose ta question"><button type="submit" aria-label="Envoyer la question">➤</button></form>
-    <div class="bot-tools"><button type="button" id="botMenu">☰ Étapes</button><button type="button" id="botPause">⏸ Pause</button><button type="button" id="botPrev">👁 Aperçu</button><button type="button" id="botHistBtn">💬 Historique</button></div>
+    <div class="bot-tools"><button type="button" id="botMenu">☰ Étapes</button><button type="button" id="botPause">⏸ Pause</button><button type="button" id="botPrev">👁 Aperçu</button><button type="button" id="botHistBtn">💬 Historique</button><button type="button" id="botHelpBtn">💡 Aide</button></div>
   </div>
 </div>
 <script>window.EVENT={{ event_json|to_json }};</script>

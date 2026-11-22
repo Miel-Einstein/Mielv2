@@ -1,10 +1,11 @@
-{% extends "base_guest.html" %}{% load i18n miel %}
+{% extends "base_guest.html" %}{% load i18n miel static %}
 {% block main %}
 <div class="card-page">
   <div class="gp-head"><h1>{% translate "Merci" %} {{ guest.first_name }} !</h1><p>{% if guest.attending %}{% translate "Votre carte personnalisée est prête 🎉" %}{% else %}{% translate "Votre réponse a bien été enregistrée. Vous nous manquerez !" %}{% endif %}</p></div>
   {% include "events/partials/card.html" %}
   <div class="row" style="justify-content:center;margin-top:18px">
     <a class="btn gold" id="dl" href="{% url 'card_pdf' event.slug guest.token %}?lang={{ lang }}" download>⤓ {% translate "Télécharger ma carte" %}</a>
+    <button type="button" class="btn" id="dlImg">🖼 {% translate "En image" %}</button>
     {% if 'mur' in event.services %}<a class="btn" href="{% url 'wall' event.slug %}?g={{ guest.token }}&lang={{ lang }}">💬 {% translate "Mur des vœux" %}</a>{% endif %}
     <a class="btn" href="{% url 'map' event.slug %}?g={{ guest.token }}&lang={{ lang }}">🧭 {% translate "Y aller" %}</a>
     {% if 'cadeaux' in event.services %}<a class="btn ghost" href="{% url 'gift_list' event.slug %}?g={{ guest.token }}&lang={{ lang }}">🎁 {% translate "Liste de cadeaux" %}</a>{% endif %}
@@ -12,8 +13,22 @@
   {% if song %}<div class="card" style="margin-top:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="vinyl"></div><div style="flex:1;min-width:140px"><b>♪ {{ song.title }}</b><div class="muted" style="font-size:12px">{{ song.artist }}</div></div>{% if song.youtube %}<a class="stream yt" href="{{ song.youtube }}" target="_blank" rel="noopener">▶ YouTube</a>{% endif %}{% if song.spotify %}<a class="stream sp" href="{{ song.spotify }}" target="_blank" rel="noopener">Spotify</a>{% endif %}</div>{% endif %}
 </div>
 {% endblock %}
+{% block head %}<script src="{% static 'miel/vendor/html-to-image.js' %}"></script>{% endblock %}
 {% block scripts %}
 <script>
+// La carte téléchargée est une capture de la carte affichée : même photo, même cadrage, même mise en page.
+(function () {
+  const el = document.querySelector('.card-page .pcard, .card-page .icard'), name = "invitation-{{ guest.first_name|slugify|default:'carte' }}";
+  const run = async (btn, kind, fallback) => {
+    if (btn.dataset.busy) return; btn.dataset.busy = '1'; const old = btn.innerHTML; btn.innerHTML = '⏳ {% translate "Préparation…" %}';
+    try { await Miel.downloadCard(el, kind, name); }
+    catch (e) { console.warn('capture', e); if (fallback) location.href = fallback; }
+    finally { btn.innerHTML = old; delete btn.dataset.busy; }
+  };
+  const dl = document.getElementById('dl'), img = document.getElementById('dlImg');
+  if (el) { dl.addEventListener('click', ev => { ev.preventDefault(); run(dl, 'pdf', dl.href); }); img.onclick = () => run(img, 'png'); }
+  else img.remove();
+})();
 try{localStorage.setItem('miel_g_'+MIEL_PUBLIC.slug,"{{ guest.token }}")}catch(e){}
 Miel.renderQRs();
 if(new URLSearchParams(location.search).get('new')==='1'){Miel.confetti(60);setTimeout(()=>document.getElementById('dl').click(),900)}

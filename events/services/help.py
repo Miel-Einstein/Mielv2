@@ -77,6 +77,12 @@ def _index(entry):
     return kw, qs, an
 
 
+# Questions dont les mots sont presque tous des mots vides : on les reconnaît à la phrase entière
+PHRASES = [
+    (re.compile(r"\b(qui es tu|tu es qui|t es qui|qui etes vous|presente toi|tu t appelles|ton nom|c est quoi miel|qu est ce que miel|miel c est quoi|tu es (un |une )?(ia|robot|humain|bot)|who are you|what is miel|what are you|are you (a )?(human|robot|bot|ai)|chi sei|cos e miel|che cos e miel|sei (un )?(umano|robot)|nani ozali|miel ezali nini)\b"), "about"),
+    (re.compile(r"\b(comment (ca|tu|miel) (marche|fonctionne|fonctionnes)|ca marche comment|par ou (je )?commence|how (does it|do you) work|where do i start|come funziona|come funzioni|da dove comincio)\b"), "about-how"),
+]
+
 THIS_SECTION = {"section", "etape", "step", "sezione", "passo", "ici", "here", "qui", "remplir", "fill", "compilare", "cette", "this", "questa", "eteni", "bloque", "stuck", "bloccato"}
 
 
@@ -84,10 +90,16 @@ def search(question, lang="fr", context="", entries=None):
     """Renvoie (meilleure entrée ou None, score, [autres entrées proches])."""
     from events.models import HelpEntry
 
+    entries = list(entries if entries is not None else HelpEntry.objects.filter(active=True))
+    phrase = norm(question)
+    for rx, key in PHRASES:
+        if rx.search(phrase):
+            hit = next((e for e in entries if e.key == key), None)
+            if hit:
+                return hit, 5.0, []
     words = tokens(question)
     if not words:
         return None, 0.0, []
-    entries = list(entries if entries is not None else HelpEntry.objects.filter(active=True))
     about_here = bool(set(norm(question).split()) & THIS_SECTION)
     scored = []
     for e in entries:

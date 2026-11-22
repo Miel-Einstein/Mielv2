@@ -7,8 +7,17 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Télécharger ma carte"
+msgstr "Kitisa karte na ngai"
+
+msgid "En image"
+msgstr "Lokola elili"
+
 msgid "Mur des vœux"
 msgstr "Lisango ya Mabondeli"
+
+msgid "Préparation…"
+msgstr "Ezali kobongisama…"
 
 msgid "Votre prénom et nom"
 msgstr "Nkombo na yo"
