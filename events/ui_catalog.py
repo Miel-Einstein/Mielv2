@@ -865,7 +865,7 @@ UI = {
     "Oui, explique-moi": ("Yes, explain", "Sì, spiegami", "Ee, limbolela ngai"),
     "Non merci": ("No thanks", "No grazie", "Te, matondi"),
     "Ne plus me le proposer": ("Don't offer again", "Non propormelo più", "Kotuna ngai lisusu te"),
-    "D'accord. Tu peux toujours poser une question en bas de l'assistant.": ("OK. You can always ask a question at the bottom of the assistant.", "D'accordo. Puoi sempre fare una domanda in fondo all'assistente.", "Malamu. Okoki ntango nyonso kotuna motuna na nse ya mosungi."),
+    "D'accord. Si tu restes bloqué·e, une zone pour poser ta question apparaîtra en bas de l'assistant.": ("OK. If you get stuck, a box to ask your question will appear at the bottom of the assistant.", "D'accordo. Se resti bloccato/a, in fondo all'assistente apparirà uno spazio per fare la tua domanda.", "Malamu. Soki okangami, esika ya kotuna motuna ekobima na nse ya mosungi."),
     "Aide sur cette page": ("Help on this page", "Aiuto su questa pagina", "Lisalisi na page oyo"),
     "💡 Besoin d'aide": ("💡 Need help", "💡 Serve aiuto", "💡 Osengeli lisalisi"),
     "Cette étape apparaît quand le service correspondant est activé.": ("This step appears when the matching service is turned on.", "Questo passo compare quando il servizio corrispondente è attivo.", "Eteni oyo ebimaka soki service na yango ezali ya kofungwama."),

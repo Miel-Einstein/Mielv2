@@ -416,27 +416,29 @@
     q = (q || '').trim(); if (!q) return;
     if (pop.hidden) open();
     const c = ctx || context();
-    view = 'help'; const h = { q, typing: true }; HL.push(h); render(true);
+    view = 'help'; showAsk(); const h = { q, typing: true }; HL.push(h); render(true);
     const lang = (window.MielUI && window.MielUI.lang) || 'fr';
     const [res] = await Promise.all([api('/api/help/ask/', { method: 'POST', json: { q, lang, context: c, event: EV.slug } }).catch(e => ({ error: e.message })), wait(650 + Math.random() * 500)]);
     h.typing = false; h.res = res.error ? { found: null, alts: [] } : res; render();
   }
   async function openEntry(id, label, ctxHelp) {
     if (pop.hidden) open();
-    view = 'help'; const h = { q: label, typing: true }; HL.push(h); render(true);
+    view = 'help'; showAsk(); const h = { q: label, typing: true }; HL.push(h); render(true);
     const lang = (window.MielUI && window.MielUI.lang) || 'fr';
     const url = ctxHelp ? '/api/help/here/?lang=' + lang + '&context=' + encodeURIComponent(ctxHelp) : '/api/help/' + id + '/?lang=' + lang;
     const [res] = await Promise.all([api(url).catch(() => null), wait(500)]);
     h.typing = false; h.res = res ? { found: res, alts: [] } : { found: null, alts: [] }; render();
   }
+  // Le champ « Bloqué·e ? » n'apparaît qu'en cas de besoin (30 s d'inaction, aide demandée, erreur répétée)
+  function showAsk() { const f = $('#botAskForm'); if (f && f.hidden) { f.hidden = false; f.classList.add('appear'); } }
   function showOffer(body) {
     if ($('.help-offer', body)) return;
     const d = document.createElement('div'); d.className = 'help-offer';
     d.innerHTML = '💡 Tu as besoin d\'un coup de main pour cette étape ?<div class="row center"><button type="button" class="btn sm gold" data-o="yes">Oui, explique-moi</button><button type="button" class="btn sm" data-o="no">Non merci</button><button type="button" class="btn sm ghost" data-o="never">Ne plus me le proposer</button></div>';
-    body.prepend(d); voice.speak(d.firstChild.textContent);
+    body.prepend(d); showAsk(); voice.speak(d.firstChild.textContent);
     d.querySelector('[data-o=yes]').onclick = () => { offerFor = null; openEntry(null, 'Aide : ' + STEPS[idx(S.step)].label, 'bot:' + S.step); };
     d.querySelector('[data-o=no]').onclick = () => { offerFor = null; d.remove(); };
-    d.querySelector('[data-o=never]').onclick = () => { offerFor = null; d.remove(); try { localStorage.setItem('miel_help_off', '1'); } catch (e) {} toast('D\'accord. Tu peux toujours poser une question en bas de l\'assistant.'); };
+    d.querySelector('[data-o=never]').onclick = () => { offerFor = null; d.remove(); try { localStorage.setItem('miel_help_off', '1'); } catch (e) {} toast('D\'accord. Si tu restes bloqué·e, une zone pour poser ta question apparaîtra en bas de l\'assistant.'); };
   }
   function offerNow() {
     if (helpOff() || offered.has(S.step) || S.paused) return;
@@ -445,8 +447,10 @@
   function setupHelp() {
     ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart'].forEach(t => document.addEventListener(t, () => { lastAct = Date.now(); }, { passive: true, capture: true }));
     setInterval(() => {
-      if (document.visibilityState !== 'visible' || helpOff()) return;
+      if (document.visibilityState !== 'visible') return;
       const idle = Date.now() - lastAct;
+      if (!pop.hidden && idle > 30000) showAsk();
+      if (helpOff()) return;
       const typing = document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.value && document.activeElement.id !== 'botAskQ';
       if (!pop.hidden && view === 'step' && idle > 30000 && !typing) offerNow();
       if (pop.hidden && idle > 30000 && !bubbleShown) { bubbleShown = true; $('#fabBubble').hidden = false; }
@@ -454,7 +458,7 @@
     // même message d'erreur deux fois de suite : proposer l'aide tout de suite
     const orig = Miel.toast;
     Miel.toast = function (m, u) { const now = Date.now(); if (!pop.hidden && view === 'step' && m === lastErr.m && now - lastErr.t < 60000) offerNow(); lastErr = { m, t: now }; return orig.apply(this, arguments); };
-    $('#fabBubble').onclick = () => { $('#fabBubble').hidden = true; const c = document.body.dataset.page || ''; open(); if (c) openEntry(null, 'Aide sur cette page', c); else { view = 'help'; render(true); } };
+    $('#fabBubble').onclick = () => { $('#fabBubble').hidden = true; const c = document.body.dataset.page || ''; open(); showAsk(); if (c) openEntry(null, 'Aide sur cette page', c); else { view = 'help'; render(true); } };
     $('#botAskForm').onsubmit = e => { e.preventDefault(); const i = $('#botAskQ'); const q = i.value; i.value = ''; askHelp(q); };
     $('#botVoice').onclick = () => voice.toggle();
     $('#botReplay').onclick = () => voice.replay();
