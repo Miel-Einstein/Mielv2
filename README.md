@@ -64,6 +64,50 @@ Tests : `python manage.py test events`
    - `TELEGRAM_BOT_TOKEN`.
 6. **Après le premier déploiement** : `python manage.py createsuperuser`, puis ajouter les morceaux du catalogue dans `/admin/` (Song).
 
+## Déployer sur PythonAnywhere
+
+PythonAnywhere fait tourner Django en WSGI : pas de WebSocket ni de Celery. Miel s'adapte tout seul :
+le temps réel passe par un rafraîchissement toutes les 3 s, et les tâches de fond se lancent avec `run_tasks`.
+
+1. Console **Bash** :
+   ```
+   git clone https://github.com/Miel-Einstein/Mielv2.git
+   cd Mielv2
+   mkvirtualenv miel --python=python3.12
+   pip install -r requirements.txt
+   cp .env.example .env && nano .env
+   ```
+   Dans `.env` : `SECRET_KEY`, `DEBUG=False`, `SITE_URL=https://TON_NOM.pythonanywhere.com`,
+   `ALLOWED_HOSTS=TON_NOM.pythonanywhere.com`, `CSRF_TRUSTED_ORIGINS=https://TON_NOM.pythonanywhere.com`,
+   `MEDIA_ROOT=/home/TON_NOM/Mielv2/media`, laisse `DATABASE_URL` et `REDIS_URL` vides.
+2. Puis :
+   ```
+   python manage.py migrate
+   python manage.py build_translations
+   python manage.py build_ui_i18n
+   python manage.py collectstatic --noinput
+   python manage.py createsuperuser
+   ```
+3. Onglet **Web** → *Add a new web app* → *Manual configuration* → Python 3.12.
+   - *Virtualenv* : `/home/TON_NOM/.virtualenvs/miel`
+   - *Static files* : `/static/` → `/home/TON_NOM/Mielv2/staticfiles` et `/media/` → `/home/TON_NOM/Mielv2/media`
+   - Fichier WSGI (lien dans l'onglet Web) : remplace tout par
+     ```python
+     import os, sys
+     sys.path.insert(0, "/home/TON_NOM/Mielv2")
+     os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings"
+     from django.core.wsgi import get_wsgi_application
+     application = get_wsgi_application()
+     ```
+   - *Force HTTPS* : activé. Puis **Reload**.
+4. Onglet **Tasks** : une tâche planifiée
+   `cd /home/TON_NOM/Mielv2 && /home/TON_NOM/.virtualenvs/miel/bin/python manage.py run_tasks`
+5. Mise à jour : `cd ~/Mielv2 && git pull && python manage.py migrate && python manage.py build_ui_i18n && python manage.py collectstatic --noinput`, puis **Reload**.
+
+Telegram : un compte gratuit ne peut joindre que les sites de la liste autorisée de PythonAnywhere.
+Si `api.telegram.org` n'y est pas, les envois Telegram échouent ; un compte payant n'a pas cette limite.
+Le webhook se branche avec `python manage.py telegram_setup --url https://TON_NOM.pythonanywhere.com`.
+
 ## Organisation du code
 
 | Dossier / fichier | Rôle |
