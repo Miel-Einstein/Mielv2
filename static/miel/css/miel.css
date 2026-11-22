@@ -218,6 +218,7 @@ label.f{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:70
 /* ===================== ÉCRAN GÉANT ===================== */
 .tv{background:radial-gradient(1200px 600px at 80% -10%,rgba(233,168,59,.18),transparent 60%),#120d0a;border-radius:22px;min-height:calc(100vh - 150px);padding:clamp(18px,4vw,48px);display:grid;grid-template-rows:auto 1fr auto;gap:20px;position:relative;overflow:hidden}
 .tv.full{border-radius:0;min-height:100vh}
+.tv{color:#fff5ea}.tv .muted{color:rgba(255,245,234,.62)}  /* fond toujours sombre : texte clair même si l'organisateur a choisi une palette claire */
 .tv h1{font-size:clamp(34px,6vw,84px);font-style:italic;color:var(--honey)}
 .tv .big-wish{align-self:center;font-family:var(--display);font-style:italic;font-size:clamp(26px,4.6vw,64px);line-height:1.2;max-width:1100px;transition:opacity .5s}
 .tv .big-wish small{display:block;font-family:var(--body);font-style:normal;font-size:clamp(14px,1.6vw,22px);color:var(--honey-soft);margin-top:18px;font-weight:700}
@@ -482,3 +483,14 @@ body.bot-open .fab-bubble{display:none}
 @keyframes flashHint{0%,100%{box-shadow:0 0 0 0 rgba(233,168,59,0)}50%{box-shadow:0 0 0 6px rgba(233,168,59,.75),0 0 24px rgba(233,168,59,.6)}}
 @media (prefers-reduced-motion:reduce){.flash-hint{outline:3px solid #e9a83b;animation:none}}
 @media (max-width:520px){.bot-voice-tools{top:10px;left:10px}.help-thread{max-height:42vh}}
+
+/* Écran géant : vœux flottants (bouton 💫) */
+.fw-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:40}
+.fw-card{position:absolute;left:-320px;max-width:280px;padding:12px 18px;border-radius:20px;background:rgba(255,255,255,.95);border-left:4px solid #ff6b9d;box-shadow:0 10px 30px -10px rgba(0,0,0,.45);animation:fwFloat 12s ease-in-out forwards}
+.fw-card .fw-text{font-size:15px;line-height:1.4;color:#5c3a1e;font-style:italic;margin:0 0 6px}
+.fw-card .fw-author{font-size:12px;color:#d6457a;font-weight:700;text-align:right}
+.fw-card .fw-heart{position:absolute;top:8px;right:12px;font-size:12px}
+@keyframes fwFloat{0%{transform:translateX(0) rotate(-5deg);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateX(calc(100vw + 640px)) translateY(-50px) rotate(5deg);opacity:0}}
+.fw-bgheart{position:absolute;bottom:0;opacity:0;animation:fwHeart 8s ease-in-out forwards}
+@keyframes fwHeart{0%{transform:translateY(10vh) rotate(0);opacity:0}10%{opacity:.35}90%{opacity:.35}100%{transform:translateY(-110vh) rotate(360deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.fw-card,.fw-bgheart{animation-duration:0s!important;display:none}}

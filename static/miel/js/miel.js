@@ -116,11 +116,13 @@
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
     await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
     const ratio = Math.min(4, Math.max(3, 1200 / el.offsetWidth));
-    const opts = { pixelRatio: ratio, cacheBust: false, skipAutoScale: true, filter: n => !(n.classList && n.classList.contains('no-capture')) };
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const opts = { pixelRatio: ratio, cacheBust: false, skipAutoScale: true, width: w, height: h,
+      style: { margin: '0', transform: 'none', boxShadow: 'none' }, filter: n => !(n.classList && n.classList.contains('no-capture')) };
     return type === 'jpeg' ? htmlToImage.toJpeg(el, { ...opts, quality: 0.93, backgroundColor: '#ffffff' }) : htmlToImage.toPng(el, opts);
   };
   // PDF minimal d'une seule page contenant l'image JPEG, à la taille de la carte (largeur A6 : 105 mm)
-  M.jpegToPdf = function (dataUrl, wPx, hPx) {
+  M.jpegToPdf = function (dataUrl, wPx, hPx, links) {
     const bin = atob(dataUrl.split(',')[1]), img = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) img[i] = bin.charCodeAt(i);
     const W = 297.64, H = +(W * hPx / wPx).toFixed(2), enc = new TextEncoder(), parts = [], offs = [];
@@ -130,7 +132,9 @@
     add('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n');
     obj(1, () => add('<< /Type /Catalog /Pages 2 0 R >>'));
     obj(2, () => add('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'));
-    obj(3, () => add('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>'));
+    const annots = (links || []).filter(l => l.url).map(l => { const x1 = l.x * W, x2 = (l.x + l.w) * W, y2 = H - l.y * H, y1 = H - (l.y + l.h) * H;
+      return '<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [' + [x1, y1, x2, y2].map(v => v.toFixed(2)).join(' ') + '] /A << /S /URI /URI (' + l.url.replace(/[()\\]/g, m => '\\' + m) + ') >> >>'; });
+    obj(3, () => add('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R' + (annots.length ? ' /Annots [' + annots.join(' ') + ']' : '') + ' >>'));
     obj(4, () => add('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
     obj(5, () => { add('<< /Type /XObject /Subtype /Image /Width ' + wPx + ' /Height ' + hPx + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + img.length + ' >>\nstream\n'); add(img); add('\nendstream'); });
     const x = len; add('xref\n0 6\n0000000000 65535 f \n' + [1, 2, 3, 4, 5].map(n => String(offs[n]).padStart(10, '0') + ' 00000 n \n').join('') + 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + x + '\n%%EOF');
@@ -144,7 +148,11 @@
     if (kind === 'pdf') {
       const url = await M.captureCard(el, 'jpeg');
       const im = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
-      M.saveBlob(M.jpegToPdf(url, im.naturalWidth, im.naturalHeight), name + '.pdf');
+      const box = el.getBoundingClientRect();  // zones cliquables (QR code, lien du mur) en fractions de la carte
+      const links = [...el.querySelectorAll('a[href]')].map(a => { const r = a.getBoundingClientRect();
+        return { url: a.href, x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height }; })
+        .filter(l => l.w > 0 && l.h > 0 && /^https?:/.test(l.url));
+      M.saveBlob(M.jpegToPdf(url, im.naturalWidth, im.naturalHeight, links), name + '.pdf');
     } else {
       const url = await M.captureCard(el, 'png');
       M.saveBlob(await (await fetch(url)).blob(), name + '.png');

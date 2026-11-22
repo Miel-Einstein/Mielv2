@@ -332,6 +332,9 @@ msgstr "Skip"
 msgid "Le prénom est obligatoire"
 msgstr "First name is required"
 
+msgid "Vœux flottants"
+msgstr "Floating wishes"
+
 msgid "Plein écran"
 msgstr "Full screen"
 

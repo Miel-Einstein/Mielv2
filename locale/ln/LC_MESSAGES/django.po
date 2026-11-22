@@ -25,6 +25,9 @@ msgstr "Nkombo na yo"
 msgid "Nom"
 msgstr "Nkombo"
 
+msgid "Vœux flottants"
+msgstr "Mabondeli oyo ezali kopumbwa"
+
 msgid "Groupes connectés"
 msgstr "Masanga ekangami"
 

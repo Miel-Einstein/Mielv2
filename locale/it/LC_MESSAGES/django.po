@@ -332,6 +332,9 @@ msgstr "Salta"
 msgid "Le prénom est obligatoire"
 msgstr "Il nome è obbligatorio"
 
+msgid "Vœux flottants"
+msgstr "Auguri fluttuanti"
+
 msgid "Plein écran"
 msgstr "Schermo intero"
 

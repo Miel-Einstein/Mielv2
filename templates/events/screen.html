@@ -1,10 +1,11 @@
 {% extends "base_guest.html" %}{% load i18n miel %}
 {% block top %}{% endblock %}
 {% block main %}
+<div class="fw-layer" id="fwLayer" aria-hidden="true"></div>
 <div class="tv full" id="tv">
   <div class="row" style="justify-content:space-between;align-items:flex-start">
     <div><div class="muted" style="letter-spacing:.3em;text-transform:uppercase;font-size:12px">{% translate "Mur des vœux" %}</div><h1>{{ event.title|tr:lang }}</h1></div>
-    <button class="btn sm" id="fsBtn" type="button">⛶ {% translate "Plein écran" %}</button>
+    <div class="row" style="gap:8px"><button class="btn sm" id="floatBtn" type="button" aria-pressed="false">💫 {% translate "Vœux flottants" %}</button><button class="btn sm" id="fsBtn" type="button">⛶ {% translate "Plein écran" %}</button></div>
   </div>
   <div class="big-wish" id="bigWish" aria-live="polite"></div>
   <div class="foot">
@@ -19,9 +20,18 @@
   const {$,esc,api}=Miel;const SLUG=MIEL_PUBLIC.slug;let ws=[],i=0;
   async function load(){ws=await api('/api/p/'+SLUG+'/wishes/');$('#nW').textContent=ws.length;$('#nR').textContent=ws.reduce((s,w)=>s+Object.values(w.reactions).reduce((a,b)=>a+b,0),0)}
   function show(){const el=$('#bigWish');if(!ws.length){el.textContent='';return}const w=ws[i%ws.length];i++;el.style.opacity=0;setTimeout(()=>{el.innerHTML='“'+esc(w.text)+'”<small>— '+esc(w.author)+'</small>';el.style.opacity=1},350)}
+  // Vœux flottants (comme le premier mur des vœux) : en plus de l'affichage, activables d'un bouton
+  const layer=$('#fwLayer'),fb=$('#floatBtn'),KEY='miel_float_'+SLUG;let floatOn=false,tW=null,tH=null;
+  function floatWish(w){if(!floatOn||!(w=w||ws[Math.floor(Math.random()*ws.length)]))return;const el=document.createElement('div');el.className='fw-card';el.style.top=(5+Math.random()*70)+'%';el.style.animationDuration=(9+Math.random()*7)+'s';el.innerHTML='<span class="fw-heart">❤️</span><div class="fw-text">“'+esc(w.text.slice(0,110))+'”</div><div class="fw-author">— '+esc(w.author)+'</div>';layer.appendChild(el);setTimeout(()=>el.remove(),17000)}
+  function floatHeart(){if(!floatOn)return;const h=document.createElement('div');h.className='fw-bgheart';h.textContent=['❤️','💖','💗','💓','💕','💝','🍯'][Math.floor(Math.random()*7)];h.style.left=Math.random()*100+'%';h.style.fontSize=(15+Math.random()*30)+'px';h.style.animationDuration=(6+Math.random()*8)+'s';layer.appendChild(h);setTimeout(()=>h.remove(),15000)}
+  function setFloat(on){floatOn=on;fb.classList.toggle('gold',on);fb.setAttribute('aria-pressed',on);try{localStorage.setItem(KEY,on?'1':'0')}catch(e){}
+    clearInterval(tW);clearInterval(tH);if(!on){layer.innerHTML='';return}
+    floatWish();tW=setInterval(()=>{floatWish();setTimeout(()=>floatWish(),2000)},5000);tH=setInterval(()=>{for(let k=0;k<3;k++)setTimeout(floatHeart,k*300)},2000)}
+  fb.onclick=()=>setFloat(!floatOn);
+  Miel.on('wish',p=>{if(p&&p.text)floatWish(p)});
   Miel.on('wish',()=>load().then(()=>{i=0;show()}));Miel.on('wish_deleted',load);Miel.on('wishes_changed',load);
   Miel.on('reaction',p=>{if(p.emoji)Miel.floatEmoji(p.emoji);load()});
-  load().then(show);setInterval(show,6000);setInterval(load,60000);
+  load().then(()=>{show();let on=false;try{on=localStorage.getItem(KEY)==='1'}catch(e){}if(on)setFloat(true)});setInterval(show,6000);setInterval(load,60000);
   Miel.renderQRs();
   // l'écran ne se met pas en veille pendant la fête
   let lock=null;const wake=async()=>{try{lock=await navigator.wakeLock.request('screen')}catch(e){}};wake();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wake()});
