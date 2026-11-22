@@ -136,7 +136,7 @@ ENTRIES = [
          actions=[A(L("Me montrer « Aperçu »", "Show me “Preview”", "Mostrami «Anteprima»"), flash="#botPrev")]),
 
     # ------------------------------------------------------------------ langues
-    dict(key="ui-language", cat="langues", ctx="", kw="langue interface miel anglais italien lingala francais changer langue parle english language change interface italiano lingua cambiare monoko",
+    dict(key="ui-language", cat="langues", ctx="", kw="langue interface anglais italien lingala francais changer langue english language change interface italiano lingua cambiare monoko",
          q=L("Comment changer la langue de Miel ?", "How do I change Miel's language?", "Come cambio la lingua di Miel?", "Ndenge nini nabongola monoko ya Miel ?"),
          a=L("Touche 🎨 en haut de l'écran, puis « Langue de Miel » : français, English, Italiano ou Lingála. C'est seulement pour toi ; les langues de tes invités se choisissent dans l'assistant.",
              "Tap 🎨 at the top of the screen, then “Miel's language”: French, English, Italian or Lingala. It's only for you; your guests' languages are chosen in the assistant.",

@@ -79,7 +79,7 @@ def _index(entry):
 
 # Questions dont les mots sont presque tous des mots vides : on les reconnaît à la phrase entière
 PHRASES = [
-    (re.compile(r"\b(qui es tu|tu es qui|t es qui|qui etes vous|presente toi|tu t appelles|ton nom|c est quoi miel|qu est ce que miel|miel c est quoi|tu es (un |une )?(ia|robot|humain|bot)|who are you|what is miel|what are you|are you (a )?(human|robot|bot|ai)|chi sei|cos e miel|che cos e miel|sei (un )?(umano|robot)|nani ozali|miel ezali nini)\b"), "about"),
+    (re.compile(r"\b(qui (es|est|etes) (tu|vous)|tu (es|est) qui|t es qui|c est qui|qui (es|est) miel|presente(s)? toi|presentez vous|parle(s|z)? (moi|nous) de (toi|vous|miel)|dis moi qui tu es|tu t appelles?|comment tu t appelles?|ton nom|c est quoi miel|qu est ce que (c est )?miel|miel c est quoi|tu (es|est|sers|fais) (quoi|a quoi)|(a|à) quoi (tu )?sers|que fais tu|qu est ce que tu (fais|es)|tu (es|est) (un |une )?(ia|robot|humain|bot|vrai)|who are you|what is miel|what are you|tell me about (you|yourself|miel)|what do you do|are you (a )?(human|robot|bot|ai)|chi sei|cos e miel|che cos e miel|parlami di (te|miel)|cosa fai|sei (un )?(umano|robot)|nani ozali|miel ezali nini)\b"), "about"),
     (re.compile(r"\b(comment (ca|tu|miel) (marche|fonctionne|fonctionnes)|ca marche comment|par ou (je )?commence|how (does it|do you) work|where do i start|come funziona|come funzioni|da dove comincio)\b"), "about-how"),
 ]
 
